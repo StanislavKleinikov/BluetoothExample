@@ -3,7 +3,6 @@ package com.example.kleinikov_sd.exampleapp.feature;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.ParcelUuid;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -16,177 +15,139 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
-import java.util.Base64;
 import java.util.UUID;
+import java.util.logging.SocketHandler;
 
 public class DeviceCommunicateActivity extends AppCompatActivity {
 
-    private static final String MESSAGE = "01 07 e2 41";
+    private static final String KEY_RESPONSE_TEXT = "responseText";
+    private static final int TIMEOUT = 1000;
+
+
     private static final String TAG = "myTag";
-    private TextView requestText;
+    private TextView deviceNameText;
     private TextView responseText;
-    private Button requestButtton;
+    private Button requestButton;
     private BluetoothDevice mDevice;
     private InputStream mInputStream;
     private OutputStream mOutputStream;
-    private BluetoothSocket mSocket;
-    volatile boolean stopWorker;
+    private static BluetoothSocket mSocket;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_communicate_device);
 
-        requestText = findViewById(R.id.request_text);
+        deviceNameText = findViewById(R.id.device_name);
         responseText = findViewById(R.id.response_text);
-        requestButtton = findViewById(R.id.request_button);
+        requestButton = findViewById(R.id.request_button);
         mDevice = getIntent().getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-        requestText.setText(mDevice.getName());
-        requestButtton.setOnClickListener(this::sendData);
+        deviceNameText.setText(mDevice.getName());
+        requestButton.setOnClickListener(this::sendData);
+
+        if (savedInstanceState != null) {
+            responseText.setText(savedInstanceState.getCharSequence(KEY_RESPONSE_TEXT));
+        }
 
         openBT();
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putCharSequence(KEY_RESPONSE_TEXT, responseText.getText());
+    }
+
     private void openBT() {
-        BluetoothSocket tmp = null;
+        if (mSocket!=null && mSocket.isConnected()){
+            try {
+                mOutputStream = mSocket.getOutputStream();
+                mInputStream = mSocket.getInputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return;
+        }
+
         try {
             ParcelUuid[] idArray = mDevice.getUuids();
             UUID uuid = UUID.fromString(idArray[0].toString());
-            Log.w(TAG, "idArray " + idArray);
-            tmp = mDevice.createRfcommSocketToServiceRecord(uuid);
+            mSocket = mDevice.createRfcommSocketToServiceRecord(uuid);
+            Log.e(TAG, "New socket");
         } catch (IOException e) {
             Log.e(TAG, "Socket's create() method failed", e);
         }
-        mSocket = tmp;
         try {
-            // Connect to the remote device through the socket. This call blocks
-            // until it succeeds or throws an exception.
             mSocket.connect();
-            Log.w(TAG, "Run try...");
             mInputStream = mSocket.getInputStream();
             mOutputStream = mSocket.getOutputStream();
         } catch (IOException connectException) {
-            Log.w(TAG, "Unable to connect", connectException);
-            onDestroy();
+            Log.w(TAG, "Unable to connect");
         }
-        Log.w(TAG, "connection " + mSocket.isConnected());
-
-        beginListenForData();
-
-        Toast.makeText(this, "Bluetooth opened", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Connection is active", Toast.LENGTH_SHORT).show();
 
     }
 
     private void sendData(View view) {
+        if (requestButton.isActivated()) {
+            return;
+        }
 
         try {
             byte[] message = new byte[4];
             message[0] = 0x01;
             message[1] = 0x07;
-            message[2] = -0x1e;
+            message[2] = (byte) 0xe2;
             message[3] = 0x41;
 
-            byte signedByte = -0x1e;
-
-            int unsignedByte = signedByte & 255;
-
-            Log.i(TAG, "Signed: " + signedByte + " Unsigned: " + Integer.toHexString(unsignedByte));
-            byte newByte = (byte) (unsignedByte - 256);
-            Log.i(TAG, "New byte: " + Integer.toHexString(newByte));
-
+            Log.e(TAG, "write message");
             mOutputStream.write(message);
+            requestButton.setActivated(true);
+
+            beginListenForData();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     private void beginListenForData() {
-        final Handler handler = new Handler();
-        final byte delimiter = 10;
-
 
         Thread workerThread = new Thread(() -> {
-            stopWorker = false;
-            int readBufferPosition;
-            byte[] readBuffer = new byte[1024];
+            StringBuilder outText = new StringBuilder();
+            long startTime = System.currentTimeMillis();
 
-            while (!Thread.currentThread().isInterrupted() && !stopWorker) {
+            while (System.currentTimeMillis() - startTime < TIMEOUT) {
                 try {
                     int bytesAvailable = mInputStream.available();
                     if (bytesAvailable > 0) {
                         byte[] packetBytes = new byte[bytesAvailable];
-                        readBufferPosition = mInputStream.read(packetBytes);
+                        mInputStream.read(packetBytes);
                         for (int i = 0; i < bytesAvailable; i++) {
-                            int unsignedByte = packetBytes[i];
-                            byte b = (byte) (unsignedByte - 256);
-                            Log.e(TAG, Integer.toHexString(b));
-                            if (b == delimiter) {
-                                byte[] encodedBytes = new byte[readBufferPosition];
-                                System.arraycopy(readBuffer, 0, encodedBytes, 0, encodedBytes.length);
-                                final String data = new String(encodedBytes, "UTF-16");
-                                readBufferPosition = 0;
-                                Log.e(TAG, data);
-                                handler.post(() -> responseText.setText(data));
-                            } else {
-                                readBuffer[readBufferPosition++] = b;
-                            }
+                            byte b = packetBytes[i];
+                            outText.append(Integer.toHexString(b & 0xff)).append(" ");
                         }
                     }
                 } catch (IOException ex) {
-                    stopWorker = true;
+                    Log.e(TAG, "Unable to read", ex);
                 }
             }
+            runOnUiThread(() -> {
+                Log.i(TAG,"Text " + outText);
+                        responseText.setText(outText);
+                        requestButton.setActivated(false);
+                    }
+            );
         });
-
         workerThread.start();
 
     }
 
-    private class ConnectThread extends Thread {
-
-        private final BluetoothSocket mSocket;
-        private final BluetoothDevice mDevice;
-
-        public ConnectThread(BluetoothDevice device) {
-            BluetoothSocket tmp = null;
-            mDevice = device;
-            try {
-                ParcelUuid[] idArray = mDevice.getUuids();
-                UUID uuid = UUID.fromString(idArray[0].toString());
-                Log.w(TAG, "idArray " + idArray);
-                tmp = device.createRfcommSocketToServiceRecord(uuid);
-            } catch (IOException e) {
-                Log.e(TAG, "Socket's create() method failed", e);
-            }
-            mSocket = tmp;
-        }
-
-        public void run() {
-            // Cancel discovery because it otherwise slows down the connection.
-            Log.w(TAG, "Run Thread");
-            try {
-                // Connect to the remote device through the socket. This call blocks
-                // until it succeeds or throws an exception.
-                mSocket.connect();
-                Log.w(TAG, "Run try...");
-                mInputStream = mSocket.getInputStream();
-                mOutputStream = mSocket.getOutputStream();
-            } catch (IOException connectException) {
-                Log.w(TAG, "Unable to connect", connectException);
-                onDestroy();
-                return;
-            }
-            Log.w(TAG, "connection " + mSocket.isConnected());
-        }
-
-
-    }
-
-    public void cancel() {
+    public static void cancel() {
         try {
-            mSocket.close();
+            if (mSocket != null) {
+                mSocket.close();
+            }
         } catch (IOException e) {
             Log.e(TAG, "Could not close the client socket", e);
         }
@@ -194,7 +155,12 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        stopWorker = true;
         super.onDestroy();
+    }
+
+    @Override
+    public void onBackPressed() {
+        cancel();
+        super.onBackPressed();
     }
 }

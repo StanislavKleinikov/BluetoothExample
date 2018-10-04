@@ -1,54 +1,30 @@
 package com.example.kleinikov_sd.exampleapp.feature;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
-import android.app.Dialog;
-import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.os.ParcelUuid;
-import android.os.PersistableBundle;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
-import android.widget.TextView;
 import android.widget.Toast;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
-
 import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ForkJoinPool;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int REQUEST_ACCESS_COARSE_LOCATION = 10;
     private static final String BLE_PIN = "0000";
     private static final String TAG = "myTag";
 
@@ -59,11 +35,9 @@ public class MainActivity extends AppCompatActivity {
     private SimpleAdapter simpleAdapter;
     private BroadcastReceiver broadcastReceiver;
     private ListView listViewDevices;
-    private Set<BluetoothDevice> mDevices = new HashSet<>();
     private BluetoothDevice mDevice;
 
-    private ArrayList<HashMap<String, String>> arrayList = new ArrayList<>();
-    private HashMap<String, String> map;
+    private static ArrayList<HashMap<String, String>> arrayList = new ArrayList<>();
 
 
     @Override
@@ -78,18 +52,18 @@ public class MainActivity extends AppCompatActivity {
             Map map = (Map) simpleAdapter.getItem(position);
             String address = (String) map.get("Address");
             mDevice = mBluetoothAdapter.getRemoteDevice(address);
-            if (mDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
+            if (mDevice.getBondState() != BluetoothDevice.BOND_BONDED) {
+               mDevice.createBond();
+            } else {
                 Intent intent = new Intent(this, DeviceCommunicateActivity.class);
                 intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mDevice);
                 mBluetoothAdapter.cancelDiscovery();
                 startActivity(intent);
-            } else {
-                mDevice.createBond();
             }
         });
 
         switcherButton.setOnClickListener(this::switchState);
-        searchButton.setOnClickListener(this::findDevices);
+        searchButton.setOnClickListener(v -> findDevices());
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         simpleAdapter = new SimpleAdapter(this, arrayList, android.R.layout.simple_list_item_2, new String[]{"Name", "Address"},
@@ -102,6 +76,11 @@ public class MainActivity extends AppCompatActivity {
         broadcastReceiver = new SingleBroadCastReceiver();
         registerReceiver(broadcastReceiver, filter);
 
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -121,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void findDevices(View view) {
+    private void findDevices() {
         arrayList.clear();
         simpleAdapter.notifyDataSetChanged();
 
@@ -133,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
                 case PackageManager.PERMISSION_DENIED:
                     ActivityCompat.requestPermissions(this,
                             new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                            REQUEST_ACCESS_COARSE_LOCATION);
+                            0);
 
                     break;
                 case PackageManager.PERMISSION_GRANTED:
@@ -150,8 +129,7 @@ public class MainActivity extends AppCompatActivity {
             String action = intent.getAction();
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                mDevices.add(device);
-                map = new HashMap<>();
+                HashMap<String, String> map = new HashMap<>();
                 map.put("Name", device.getName());
                 map.put("Address", device.getAddress());
                 if (!arrayList.contains(map) && device.getName() != null) {
@@ -161,17 +139,24 @@ public class MainActivity extends AppCompatActivity {
             } else if (BluetoothDevice.ACTION_PAIRING_REQUEST.equals(action)) {
                 BluetoothDevice bluetoothDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 bluetoothDevice.setPin(BLE_PIN.getBytes());
-                Log.e(TAG, "Auto-entering pin: " + BLE_PIN);
-                Log.e(TAG, "pin entered and request sent...");
             } else if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
                 BluetoothDevice bluetoothDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 switch (bluetoothDevice.getBondState()) {
                     case BluetoothDevice.BOND_BONDED:
-
+                        intent = new Intent(MainActivity.this, DeviceCommunicateActivity.class);
+                        intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mDevice);
+                        mBluetoothAdapter.cancelDiscovery();
+                        startActivity(intent);
                 }
             }
 
         }
     }
 
+    @Override
+    public void onBackPressed() {
+        Log.e(TAG,"on Back pressed");
+        DeviceCommunicateActivity.cancel();
+        super.onBackPressed();
+    }
 }
