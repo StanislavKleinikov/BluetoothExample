@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private ListView listViewDevices;
     private BluetoothDevice mDevice;
 
-    private static ArrayList<HashMap<String, String>> arrayList = new ArrayList<>();
+    private final static ArrayList<HashMap<String, String>> arrayList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
         findDevices();
     }
 
-    public void findDevices() {
+    private void findDevices() {
         arrayList.clear();
         simpleAdapter.notifyDataSetChanged();
 

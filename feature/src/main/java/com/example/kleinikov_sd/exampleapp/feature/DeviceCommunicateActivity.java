@@ -7,7 +7,6 @@ import android.os.ParcelUuid;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -43,7 +42,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
         requestButton = findViewById(R.id.request_button);
         mDevice = getIntent().getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
         deviceNameText.setText(mDevice.getName());
-        requestButton.setOnClickListener(this::sendData);
+        requestButton.setOnClickListener(v -> sendData());
 
         if (savedInstanceState != null) {
             responseText.setText(savedInstanceState.getCharSequence(KEY_RESPONSE_TEXT));
@@ -88,7 +87,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
         }
     }
 
-    private void sendData(View view) {
+    private void sendData() {
         if (requestButton.isActivated()) {
             return;
         }
@@ -177,11 +176,6 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
             x = "0" + x;
         }
         return x;
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
     }
 
     @Override

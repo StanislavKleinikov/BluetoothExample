@@ -2,7 +2,6 @@
 <resources>
     <string name="find_devices">Find available devices</string>
     <string name="switch_bluetooth">bluetooth switcher</string>
-    <string name="textView">Paired devices</string>
     <string name="textView2">Available devices</string>
     <string name="response">Response</string>
     <string name="request">Request</string>
