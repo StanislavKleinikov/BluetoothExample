@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
-import java.util.logging.SocketHandler;
 
 public class DeviceCommunicateActivity extends AppCompatActivity {
 
@@ -35,6 +34,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_communicate_device);
 
@@ -59,7 +59,8 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
     }
 
     private void openBT() {
-        if (mSocket!=null && mSocket.isConnected()){
+
+        if (mSocket != null) {
             try {
                 mOutputStream = mSocket.getOutputStream();
                 mInputStream = mSocket.getInputStream();
@@ -68,12 +69,10 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
             }
             return;
         }
-
         try {
             ParcelUuid[] idArray = mDevice.getUuids();
             UUID uuid = UUID.fromString(idArray[0].toString());
             mSocket = mDevice.createRfcommSocketToServiceRecord(uuid);
-            Log.e(TAG, "New socket");
         } catch (IOException e) {
             Log.e(TAG, "Socket's create() method failed", e);
         }
@@ -81,18 +80,18 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
             mSocket.connect();
             mInputStream = mSocket.getInputStream();
             mOutputStream = mSocket.getOutputStream();
+            Toast.makeText(this, "Connection is active", Toast.LENGTH_SHORT).show();
         } catch (IOException connectException) {
             Log.w(TAG, "Unable to connect");
+            onBackPressed();
+            Toast.makeText(this, "Unable to connect. Please, try again", Toast.LENGTH_SHORT).show();
         }
-        Toast.makeText(this, "Connection is active", Toast.LENGTH_SHORT).show();
-
     }
 
     private void sendData(View view) {
         if (requestButton.isActivated()) {
             return;
         }
-
         try {
             byte[] message = new byte[4];
             message[0] = 0x01;
@@ -101,6 +100,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
             message[3] = 0x41;
 
             Log.e(TAG, "write message");
+            Log.e(TAG, ("Stream " + (mOutputStream == null)));
             mOutputStream.write(message);
             requestButton.setActivated(true);
 
@@ -125,7 +125,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
                         mInputStream.read(packetBytes);
                         for (int i = 0; i < bytesAvailable; i++) {
                             byte b = packetBytes[i];
-                            outText.append(Integer.toHexString(b & 0xff)).append(" ");
+                            outText.append(getHexString(b)).append(" ");
                         }
                     }
                 } catch (IOException ex) {
@@ -133,7 +133,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
                 }
             }
             runOnUiThread(() -> {
-                Log.i(TAG,"Text " + outText);
+                        Log.i(TAG, "Text " + outText);
                         responseText.setText(outText);
                         requestButton.setActivated(false);
                     }
@@ -143,14 +143,40 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
 
     }
 
-    public static void cancel() {
-        try {
-            if (mSocket != null) {
-                mSocket.close();
+    private void resetConnection() {
+        if (mInputStream != null) {
+            try {
+                mInputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            Log.e(TAG, "Could not close the client socket", e);
+            mInputStream = null;
         }
+        if (mOutputStream != null) {
+            try {
+                mOutputStream.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            mOutputStream = null;
+        }
+        if (mSocket != null) {
+            try {
+                mSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            mSocket = null;
+        }
+    }
+
+    private String getHexString(Byte number) {
+        String x = Integer.toHexString(number & 255);
+        if (x.length() < 2) {
+            x = "0" + x;
+        }
+        return x;
     }
 
     @Override
@@ -160,7 +186,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        cancel();
+        resetConnection();
         super.onBackPressed();
     }
 }
