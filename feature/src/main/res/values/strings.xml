@@ -4,6 +4,11 @@
     <string name="switch_bluetooth">bluetooth switcher</string>
     <string name="textView2">Available devices</string>
     <string name="response">Response</string>
-    <string name="request">Request</string>
+    <string name="device_name">Device name</string>
     <string name="send_button">Send request</string>
+    <string name="message_counter">Total request</string>
+    <string name="message_error_counter">Errors</string>
+    <string name="start_message_number">0</string>
+    <dimen name="TextView">30sp</dimen>
+    <dimen name="Counter">20sp</dimen>
 </resources>

@@ -7,7 +7,6 @@ import android.os.ParcelUuid;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -15,21 +14,30 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 public class DeviceCommunicateActivity extends AppCompatActivity {
 
     private static final String KEY_RESPONSE_TEXT = "responseText";
-    private static final int TIMEOUT = 1000;
-
+    private static final int TIMEOUT = 100;
+    private static final int TIMEOUT_RESPONSE = 1000;
 
     private static final String TAG = "myTag";
     private TextView deviceNameText;
     private TextView responseText;
-    private Button requestButton;
+    private TextView messageNumberView;
+    private TextView errorNumberView;
     private BluetoothDevice mDevice;
     private InputStream mInputStream;
     private OutputStream mOutputStream;
     private static BluetoothSocket mSocket;
+
+    private int messageNumber;
+    private int errorNumber;
+
+    private long time;
+    private static int threadId;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -39,14 +47,12 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
 
         deviceNameText = findViewById(R.id.device_name);
         responseText = findViewById(R.id.response_text);
-        requestButton = findViewById(R.id.request_button);
+        messageNumberView = findViewById(R.id.message_number);
+        errorNumberView = findViewById(R.id.error_number);
+        messageNumber = Integer.parseInt(messageNumberView.getText().toString());
+        errorNumber = Integer.parseInt(errorNumberView.getText().toString());
         mDevice = getIntent().getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
         deviceNameText.setText(mDevice.getName());
-        requestButton.setOnClickListener(v -> sendData());
-
-        if (savedInstanceState != null) {
-            responseText.setText(savedInstanceState.getCharSequence(KEY_RESPONSE_TEXT));
-        }
 
         openBT();
     }
@@ -85,38 +91,49 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
             onBackPressed();
             Toast.makeText(this, "Unable to connect. Please, try again", Toast.LENGTH_SHORT).show();
         }
+
+        sendData();
     }
 
     private void sendData() {
-        if (requestButton.isActivated()) {
-            return;
-        }
-        try {
-            byte[] message = new byte[4];
-            message[0] = 0x01;
-            message[1] = 0x07;
-            message[2] = (byte) 0xe2;
-            message[3] = 0x41;
+        int count = 0;
+        time = System.currentTimeMillis();
 
-            Log.e(TAG, "write message");
-            Log.e(TAG, ("Stream " + (mOutputStream == null)));
-            mOutputStream.write(message);
-            requestButton.setActivated(true);
+        ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
 
-            beginListenForData();
-
-        } catch (IOException e) {
-            e.printStackTrace();
+        while (count < 10) {
+            Log.i(TAG, "Time: " + (System.currentTimeMillis() - time));
+            try {
+                byte[] message = new byte[]{0x01, 0x07, (byte) 0xe2, 0x41};
+                mOutputStream.write(message);
+                beginListenForData();
+                messageNumber++;
+                messageNumberView.setText(String.valueOf(messageNumber));
+            } catch (IOException e) {
+                e.printStackTrace();
+                errorNumber++;
+                errorNumberView.setText(String.valueOf(errorNumber));
+            }
+            count++;
+            try {
+                Thread.sleep(TIMEOUT);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                errorNumber++;
+                errorNumberView.setText(String.valueOf(errorNumber));
+            }
         }
     }
 
     private void beginListenForData() {
 
         Thread workerThread = new Thread(() -> {
-            StringBuilder outText = new StringBuilder();
+            int x = threadId++;
             long startTime = System.currentTimeMillis();
+            Log.e(TAG, "Start thread" + x);
 
-            while (System.currentTimeMillis() - startTime < TIMEOUT) {
+            StringBuilder outText = new StringBuilder();
+            while (System.currentTimeMillis() - startTime < TIMEOUT_RESPONSE) {
                 try {
                     int bytesAvailable = mInputStream.available();
                     if (bytesAvailable > 0) {
@@ -129,12 +146,13 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
                     }
                 } catch (IOException ex) {
                     Log.e(TAG, "Unable to read", ex);
+                    errorNumber++;
+                    errorNumberView.setText(String.valueOf(errorNumber));
                 }
             }
+            Log.i(TAG, "Response time from thread" + x + " " + (System.currentTimeMillis() - time) + " Answer text " + outText);
             runOnUiThread(() -> {
-                        Log.i(TAG, "Text " + outText);
                         responseText.setText(outText);
-                        requestButton.setActivated(false);
                     }
             );
         });
