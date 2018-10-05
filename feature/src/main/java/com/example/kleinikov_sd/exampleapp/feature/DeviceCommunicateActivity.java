@@ -16,6 +16,7 @@ import java.io.OutputStream;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class DeviceCommunicateActivity extends AppCompatActivity {
 
@@ -32,6 +33,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
     private InputStream mInputStream;
     private OutputStream mOutputStream;
     private static BluetoothSocket mSocket;
+    private ScheduledExecutorService mExecutor;
 
     private int messageNumber;
     private int errorNumber;
@@ -86,78 +88,65 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
             mInputStream = mSocket.getInputStream();
             mOutputStream = mSocket.getOutputStream();
             Toast.makeText(this, "Connection is active", Toast.LENGTH_SHORT).show();
+            mExecutor = Executors.newScheduledThreadPool(1);
+            mExecutor.scheduleWithFixedDelay(this::sendData, 400, 1000, TimeUnit.MILLISECONDS);
         } catch (IOException connectException) {
             Log.w(TAG, "Unable to connect");
             onBackPressed();
             Toast.makeText(this, "Unable to connect. Please, try again", Toast.LENGTH_SHORT).show();
         }
-
-        sendData();
     }
 
     private void sendData() {
-        int count = 0;
-        time = System.currentTimeMillis();
-
-        ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-
-        while (count < 10) {
-            Log.i(TAG, "Time: " + (System.currentTimeMillis() - time));
-            try {
-                byte[] message = new byte[]{0x01, 0x07, (byte) 0xe2, 0x41};
-                mOutputStream.write(message);
-                beginListenForData();
-                messageNumber++;
-                messageNumberView.setText(String.valueOf(messageNumber));
-            } catch (IOException e) {
-                e.printStackTrace();
-                errorNumber++;
-                errorNumberView.setText(String.valueOf(errorNumber));
-            }
-            count++;
-            try {
-                Thread.sleep(TIMEOUT);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                errorNumber++;
-                errorNumberView.setText(String.valueOf(errorNumber));
-            }
-        }
+        beginListenForData();
+       /* time = System.currentTimeMillis();
+        Log.i(TAG, "Time: " + (System.currentTimeMillis() - time));
+        try {
+            byte[] message = new byte[]{0x01, 0x07, (byte) 0xe2, 0x41};
+            mOutputStream.write(message);
+            beginListenForData();
+            messageNumber++;
+            messageNumberView.setText(String.valueOf(messageNumber));
+        } catch (IOException e) {
+            e.printStackTrace();
+            errorNumber++;
+            errorNumberView.setText(String.valueOf(errorNumber));
+        }*/
     }
 
+
     private void beginListenForData() {
+        Log.i(TAG, "Done ");
+        messageNumber++;
+        runOnUiThread(() -> messageNumberView.setText(String.valueOf(messageNumber)));
 
-        Thread workerThread = new Thread(() -> {
-            int x = threadId++;
-            long startTime = System.currentTimeMillis();
-            Log.e(TAG, "Start thread" + x);
 
-            StringBuilder outText = new StringBuilder();
-            while (System.currentTimeMillis() - startTime < TIMEOUT_RESPONSE) {
-                try {
-                    int bytesAvailable = mInputStream.available();
-                    if (bytesAvailable > 0) {
-                        byte[] packetBytes = new byte[bytesAvailable];
-                        mInputStream.read(packetBytes);
-                        for (int i = 0; i < bytesAvailable; i++) {
-                            byte b = packetBytes[i];
-                            outText.append(getHexString(b)).append(" ");
-                        }
-                    }
-                } catch (IOException ex) {
-                    Log.e(TAG, "Unable to read", ex);
-                    errorNumber++;
-                    errorNumberView.setText(String.valueOf(errorNumber));
+       /* int x = threadId++;
+        long startTime = System.currentTimeMillis();
+        Log.e(TAG, "Start thread" + x);
+
+        StringBuilder outText = new StringBuilder();
+        try {
+            int bytesAvailable = mInputStream.available();
+            if (bytesAvailable > 0) {
+                byte[] packetBytes = new byte[bytesAvailable];
+                mInputStream.read(packetBytes);
+                for (int i = 0; i < bytesAvailable; i++) {
+                    byte b = packetBytes[i];
+                    outText.append(getHexString(b)).append(" ");
                 }
             }
-            Log.i(TAG, "Response time from thread" + x + " " + (System.currentTimeMillis() - time) + " Answer text " + outText);
-            runOnUiThread(() -> {
-                        responseText.setText(outText);
-                    }
-            );
-        });
-        workerThread.start();
+        } catch (IOException ex) {
+            Log.e(TAG, "Unable to read", ex);
+            errorNumber++;
+            errorNumberView.setText(String.valueOf(errorNumber));
+        }
 
+        Log.i(TAG, "Response time from thread" + x + " " + (System.currentTimeMillis() - time) + " Answer text " + outText);
+        runOnUiThread(() -> {
+                    responseText.setText(outText);
+                }
+        );*/
     }
 
     private void resetConnection() {
@@ -198,6 +187,9 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        if (mExecutor != null) {
+            mExecutor.shutdown();
+        }
         resetConnection();
         super.onBackPressed();
     }
