@@ -126,9 +126,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onBackPressed() {
+    protected void onStop() {
         arrayList.clear();
-        super.onBackPressed();
+        super.onStop();
     }
 
     @Override
