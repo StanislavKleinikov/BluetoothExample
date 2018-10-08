@@ -1,10 +1,19 @@
 package com.example.kleinikov_sd.exampleapp.feature;
 
+import android.app.Activity;
+import android.app.Service;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.os.ParcelUuid;
 import android.support.annotation.Nullable;
+import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.TextView;
@@ -26,6 +35,10 @@ import java.util.concurrent.TimeUnit;
 
 public class DeviceCommunicateActivity extends AppCompatActivity {
 
+    public static final int SUCCESS = 1;
+    public static final int FAIL = 2;
+
+
     private static final String KEY_RESPONSE_TEXT = "responseText";
     private static final String KEY_MESSAGE_NUMBER = "messageNumber";
     private static final String KEY_ERROR_NUMBER = "errorNumber";
@@ -44,11 +57,11 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
     private static OutputStream mOutputStream;
     private static BluetoothSocket mSocket;
     private static ScheduledExecutorService mExecutor;
+    private static Handler mHandler;
 
-    private int messageNumber;
-    private int errorNumber;
+    private static int messageNumber;
+    private static int errorNumber;
     private long time;
-
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -80,7 +93,21 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
         errorNumberView.setText(String.valueOf(errorNumber));
         mDevice = getIntent().getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
         deviceNameText.setText(mDevice.getName());
+        mHandler = new Handler(msg -> {
+            switch (msg.what) {
+                case SUCCESS:
+                    messageNumber++;
+                    messageNumberView.setText(String.valueOf(messageNumber));
+                    break;
+                case FAIL:
+                    errorNumber++;
+                    errorNumberView.setText(String.valueOf(errorNumber));
+            }
+            return false;
+        });
+
         openBT();
+
     }
 
     @Override
@@ -101,6 +128,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
             ParcelUuid[] idArray = mDevice.getUuids();
             UUID uuid = UUID.fromString(idArray[0].toString());
             mSocket = mDevice.createRfcommSocketToServiceRecord(uuid);
+            resetMessageNumber();
         } catch (IOException e) {
             Log.e(TAG, "Socket's create() method failed", e);
         }
@@ -122,28 +150,12 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
             byte[] message = new byte[]{0x01, 0x07, (byte) 0xe2, 0x41};
             mOutputStream.write(message);
             beginListenForData();
-            updateMessageNumber();
+            mHandler.sendEmptyMessage(SUCCESS);
         } catch (IOException e) {
-            Log.e(TAG, "An error occurred while recording the message");
+            Log.e(TAG, "An error occurred while sending data");
+            stop();
             e.printStackTrace();
-            updateErrorNumber();
         }
-    }
-
-    private void updateErrorNumber() {
-        runOnUiThread(() -> {
-            errorNumber++;
-            errorNumberView.setText(String.valueOf(errorNumber));
-        });
-
-    }
-
-    private void updateMessageNumber() {
-        runOnUiThread(() -> {
-            messageNumber++;
-            Log.e(TAG,"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!          " + messageNumber);
-            messageNumberView.setText(String.valueOf(messageNumber));
-        });
     }
 
     private void beginListenForData() {
@@ -167,11 +179,11 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
                 }
             } catch (IOException ex) {
                 Log.e(TAG, "Unable to read", ex);
-                updateErrorNumber();
+                mHandler.sendEmptyMessage(FAIL);
             }
         }
         if (HASH_07 != Arrays.hashCode(buffer)) {
-            updateErrorNumber();
+            mHandler.sendEmptyMessage(FAIL);
             Log.e(TAG, "Buffer" + Arrays.toString(buffer));
         }
 
@@ -210,6 +222,8 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
     private void resetMessageNumber() {
         messageNumber = 0;
         errorNumber = 0;
+        messageNumberView.setText(String.valueOf(messageNumber));
+        errorNumberView.setText(String.valueOf(errorNumber));
     }
 
     private String getHexString(Byte number) {
