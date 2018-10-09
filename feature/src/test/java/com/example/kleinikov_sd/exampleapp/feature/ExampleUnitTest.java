@@ -1,6 +1,10 @@
 package com.example.kleinikov_sd.exampleapp.feature;
 
+import android.util.Log;
+
 import org.junit.Test;
+
+import java.util.Arrays;
 
 import static org.junit.Assert.*;
 
@@ -15,17 +19,5 @@ public class ExampleUnitTest {
         assertEquals(4, 2 + 2);
     }
 
-    @Test
-    public void byteTest(){
-        byte first = (byte) 226;
-        System.out.println(first);
-        System.out.println(Integer.toHexString(first));
-        int second = first & 0xff;
-        System.out.println(second);
-        System.out.println(Integer.toHexString(second));
 
-        byte x = -30;
-        System.out.println(Integer.toHexString(x&0xff));
-
-    }
 }
