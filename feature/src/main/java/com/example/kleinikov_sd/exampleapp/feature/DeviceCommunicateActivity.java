@@ -1,33 +1,23 @@
 package com.example.kleinikov_sd.exampleapp.feature;
 
-import android.app.Activity;
-import android.app.Service;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.IBinder;
-import android.os.Looper;
-import android.os.Message;
 import android.os.ParcelUuid;
 import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import org.apache.commons.lang3.time.StopWatch;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -44,8 +34,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
     private static final String KEY_ERROR_NUMBER = "errorNumber";
     private static final String KEY_ACTIVATED = "activated";
     private static final int TIMEOUT = 100;
-    private static final int HASH_07 = Arrays.hashCode(new byte[]{0x01, 0x07, 0x00, 0x30, 0x22});
-    private static final String TAG = "myTag";
+    public static final String TAG = "myTag";
 
     private TextView deviceNameText;
     private TextView responseText;
@@ -62,6 +51,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
     private static int messageNumber;
     private static int errorNumber;
     private long time;
+    private StopWatch s;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -182,11 +172,14 @@ public class DeviceCommunicateActivity extends AppCompatActivity {
                 mHandler.sendEmptyMessage(FAIL);
             }
         }
-        if (HASH_07 != Arrays.hashCode(buffer)) {
-            mHandler.sendEmptyMessage(FAIL);
-            Log.e(TAG, "Buffer" + Arrays.toString(buffer));
+        try {
+            if (!CRC.getInstance().checkCRC(buffer)) {
+                mHandler.sendEmptyMessage(FAIL);
+                Log.e(TAG, "Buffer" + Arrays.toString(buffer));
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, " error", e);
         }
-
         Log.i(TAG, "Response time" + " " + (System.currentTimeMillis() - time) + " Answer text " + outText);
         runOnUiThread(() -> responseText.setText(outText));
     }
