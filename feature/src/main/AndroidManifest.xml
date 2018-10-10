@@ -16,6 +16,7 @@
         </activity>
         <activity android:name=".DeviceCommunicateActivity" />
 
+        <service android:name=".ConnectionDeviceService" />
     </application>
 
 </manifest>
