@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
@@ -12,6 +13,7 @@ import android.os.Build;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,20 +22,30 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String TAG = "myTag";
+
+    public static final String ACTION_CHANGE_DEVICE = "changeDevice";
+    public static final String EXTRA_MESSAGE = "message";
+    private static final String FILE_NAME = "BoundedDeviceInfo";
     private static final String KEY_PIN = "0000";
-    private static final String KEY_ADDRESS = "Address";
-    private static final String KEY_NAME = "Name";
-    private static final String TAG = "myTag";
+    private static final String KEY_ADDRESS = "address";
+    private static final String KEY_NAME = "came";
+
 
     private Button switcherButton;
     private Button searchButton;
-    private BluetoothAdapter mBluetoothAdapter;
+    private static final BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     private SimpleAdapter simpleAdapter;
     private BroadcastReceiver broadcastReceiver;
     private ListView listViewDevices;
@@ -43,6 +55,20 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        if (!ACTION_CHANGE_DEVICE.equals(getIntent().getAction())) {
+            String macAddress = readDeviceInfo();
+            if (BluetoothAdapter.checkBluetoothAddress(macAddress)) {
+//                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+//                builder.setTitle("Connecting to device")
+//                        .setCancelable(false);
+//                AlertDialog alert = builder.create();
+//                alert.show();
+                connect(mBluetoothAdapter.getRemoteDevice(macAddress));
+
+            }
+        }
+
         Log.i(TAG, "On Create MainActivity");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -66,7 +92,6 @@ public class MainActivity extends AppCompatActivity {
         switcherButton.setOnClickListener(v -> switchState());
         searchButton.setOnClickListener(v -> findDevices());
 
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         simpleAdapter = new SimpleAdapter(this, arrayList, android.R.layout.simple_list_item_2, new String[]{KEY_NAME, KEY_ADDRESS},
                 new int[]{android.R.id.text1, android.R.id.text2});
         listViewDevices.setAdapter(simpleAdapter);
@@ -81,26 +106,41 @@ public class MainActivity extends AppCompatActivity {
     private void switchState() {
         if (mBluetoothAdapter.isEnabled()) {
             mBluetoothAdapter.disable();
-            Toast.makeText(getApplicationContext(), "Turned off", Toast.LENGTH_SHORT).show();
+            makeToast(getString(R.string.toast_turned_off));
         } else {
             Intent turnOn = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(turnOn, 0);
-            Toast.makeText(getApplicationContext(), "Turned on", Toast.LENGTH_SHORT).show();
+            makeToast(getString(R.string.toast_turned_on));
         }
     }
 
     private void connect(BluetoothDevice device) {
         Log.i(TAG, "Connect");
+        mBluetoothAdapter.cancelDiscovery();
         Intent intent = new Intent(MainActivity.this, DeviceCommunicateActivity.class);
         intent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
-        mBluetoothAdapter.cancelDiscovery();
         startActivityForResult(intent, 0);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        switch (resultCode) {
+            case RESULT_OK:
+                finish();
+                break;
+            case RESULT_CANCELED:
+                if (data != null) {
+                    String message = data.getStringExtra(EXTRA_MESSAGE);
+                    makeToast(message);
+                }
+                findDevices();
+                break;
+        }
         super.onActivityResult(requestCode, resultCode, data);
-        findDevices();
+    }
+
+    private void makeToast(String message) {
+        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
     }
 
     private void findDevices() {
@@ -159,9 +199,32 @@ public class MainActivity extends AppCompatActivity {
                 switch (bluetoothDevice.getBondState()) {
                     case BluetoothDevice.BOND_BONDED:
                         connect(bluetoothDevice);
+                        Log.e(TAG, "save");
+                        saveDeviceInfo();
                 }
             }
 
         }
+    }
+
+    private void saveDeviceInfo() {
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+                openFileOutput(FILE_NAME, MODE_PRIVATE)))) {
+            writer.write(mDevice.getAddress());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String readDeviceInfo() {
+        StringBuilder address = new StringBuilder();
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    openFileInput(FILE_NAME)));
+            address.append(reader.readLine());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return address.toString();
     }
 }

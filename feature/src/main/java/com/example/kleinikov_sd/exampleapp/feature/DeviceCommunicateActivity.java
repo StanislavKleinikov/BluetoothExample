@@ -1,35 +1,43 @@
 package com.example.kleinikov_sd.exampleapp.feature;
 
 import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import static com.example.kleinikov_sd.exampleapp.feature.MainActivity.TAG;
+
 public class DeviceCommunicateActivity extends AppCompatActivity implements ConnectionDeviceService.Callbacks {
 
-    private static final String KEY_RESPONSE_TEXT = "responseText";
-    private static final String KEY_MESSAGE_NUMBER = "messageNumber";
-    private static final String KEY_ERROR_NUMBER = "errorNumber";
-    private static final String KEY_ACTIVATED = "activated";
-    private static final String KEY_SERVICE_INTENT = "serviceIntent";
-    private static final String KEY_DEVICE = "device";
-    public static final String TAG = "myTag";
+    public static final String KEY_RESPONSE_TEXT = "responseText";
+    public static final String KEY_MESSAGE_NUMBER = "messageNumber";
+    public static final String KEY_ERROR_NUMBER = "errorNumber";
+    public static final String KEY_ACTIVATED = "activated";
+    public static final String KEY_SERVICE_INTENT = "serviceIntent";
+    public static final String KEY_DEVICE = "device";
+    public static final String KEY_TOGGLE_CLICKABLE = "clickable";
 
     private TextView deviceNameText;
     private TextView responseText;
     private TextView messageNumberView;
     private TextView errorNumberView;
+    private Button changeDeviceButton;
     private ToggleButton toggleButton;
     private BluetoothDevice mDevice;
+    private BroadcastReceiver mReceiver;
 
     private ConnectionDeviceService mService;
     private Intent serviceIntent;
@@ -48,25 +56,31 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
         responseText = findViewById(R.id.response_text);
         messageNumberView = findViewById(R.id.message_number);
         errorNumberView = findViewById(R.id.error_number);
+        changeDeviceButton = findViewById(R.id.change_device);
+        changeDeviceButton.setOnClickListener(v -> {
+            cancel(getString(R.string.toast_change_device));
+        });
         toggleButton = findViewById(R.id.toggle_button);
-        toggleButton.setOnClickListener(v -> {
+        toggleButton.setOnClickListener((v) -> {
             if (toggleButton.isChecked()) {
                 mService.start();
             } else {
                 mService.stop();
             }
         });
-
         if (savedInstanceState != null) {
             responseText.setText(savedInstanceState.getCharSequence(KEY_RESPONSE_TEXT));
             mMessageNumber = savedInstanceState.getInt(KEY_MESSAGE_NUMBER);
             mErrorNumber = savedInstanceState.getInt(KEY_ERROR_NUMBER);
             toggleButton.setChecked(savedInstanceState.getBoolean(KEY_ACTIVATED));
+            toggleButton.setClickable(savedInstanceState.getBoolean(KEY_TOGGLE_CLICKABLE));
             serviceIntent = savedInstanceState.getParcelable(KEY_SERVICE_INTENT);
             mDevice = savedInstanceState.getParcelable(KEY_DEVICE);
-            Log.e(TAG, "mDevice " + (mDevice==null));
         } else {
             mDevice = getIntent().getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+            toggleButton.setChecked(getIntent().getBooleanExtra(KEY_ACTIVATED, false));
+            mMessageNumber = getIntent().getIntExtra(KEY_MESSAGE_NUMBER, 0);
+            mErrorNumber = getIntent().getIntExtra(KEY_ERROR_NUMBER, 0);
         }
 
         messageNumberView.setText(String.valueOf(mMessageNumber));
@@ -79,13 +93,22 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
                 ConnectionDeviceService.LocalBinder binder = (ConnectionDeviceService.LocalBinder) service;
                 mService = binder.getServiceInstance(); //Get instance of your service!
                 mService.registerClient(DeviceCommunicateActivity.this); //Activity register in the service as client for callbacks!
+                Log.e(TAG, "Service connected ");
             }
 
             @Override
             public void onServiceDisconnected(ComponentName arg) {
-                Toast.makeText(DeviceCommunicateActivity.this, "Service has been disconnected", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "service disconnected ");
             }
         };
+
+        IntentFilter filter = new IntentFilter(ConnectionDeviceService.ACTION_UNABLE_CONNECT);
+        filter.addAction(ConnectionDeviceService.ACTION_CONNECTION_ACTIVE);
+        filter.addAction(ConnectionDeviceService.ACTION_RECONNECT);
+        filter.addAction(ConnectionDeviceService.ACTION_DISCONNECT);
+        filter.addAction(ConnectionDeviceService.ACTION_CANCEL);
+        mReceiver = new ConnectionBroadCastReceiver();
+        registerReceiver(mReceiver, filter);
 
         if (serviceIntent == null) {
             serviceIntent = new Intent(this, ConnectionDeviceService.class);
@@ -102,18 +125,32 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
         outState.putInt(KEY_MESSAGE_NUMBER, mMessageNumber);
         outState.putInt(KEY_ERROR_NUMBER, mErrorNumber);
         outState.putBoolean(KEY_ACTIVATED, toggleButton.isChecked());
+        outState.putBoolean(KEY_TOGGLE_CLICKABLE, toggleButton.isClickable());
         outState.putParcelable(KEY_SERVICE_INTENT, serviceIntent);
         outState.putParcelable(KEY_DEVICE, mDevice);
     }
 
+    private void cancel(String message) {
+        Log.e(TAG, "cancel");
+        stopService(serviceIntent);
+        setResult(RESULT_CANCELED);
+        getIntent().putExtra(MainActivity.EXTRA_MESSAGE, message);
+        finish();
+    }
+
+    private void makeToast(String message) {
+        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+    }
+
     @Override
     public void onBackPressed() {
-        stopService(serviceIntent);
+        mService.onDestroy();
+        setResult(RESULT_OK);
         super.onBackPressed();
     }
 
     @Override
-    public void updateClient(int messageNumber, int errorNumber) {
+    public void updateMessageNumber(int messageNumber, int errorNumber) {
         runOnUiThread(() -> {
             mMessageNumber = messageNumber;
             mErrorNumber = errorNumber;
@@ -125,6 +162,33 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
     @Override
     protected void onDestroy() {
         unbindService(mConnection);
+        unregisterReceiver(mReceiver);
         super.onDestroy();
+    }
+
+    private class ConnectionBroadCastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (ConnectionDeviceService.ACTION_CONNECTION_ACTIVE.equals(action)) {
+                responseText.setText(getString(R.string.status_connected));
+                makeToast(getString(R.string.toast_connection_active));
+                toggleButton.setClickable(true);
+            } else if (ConnectionDeviceService.ACTION_UNABLE_CONNECT.equals(action)) {
+                responseText.setText(getString(R.string.status_unable_connect));
+                makeToast(getString(R.string.toast_connection_failed));
+                toggleButton.setClickable(false);
+            } else if (ConnectionDeviceService.ACTION_RECONNECT.equals(action)) {
+                responseText.setText(getString(R.string.status_reconnect));
+                makeToast(getString(R.string.toast_reconnection));
+                toggleButton.setClickable(false);
+            } else if (ConnectionDeviceService.ACTION_DISCONNECT.equals(action)) {
+                responseText.setText(getString(R.string.status_disconnect));
+                makeToast(getString(R.string.toast_connection_failed));
+                toggleButton.setClickable(false);
+            } else if (ConnectionDeviceService.ACTION_CANCEL.equals(action)) {
+                cancel(getString(R.string.status_unable_connect));
+            }
+        }
     }
 }
