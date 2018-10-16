@@ -4,6 +4,7 @@ import android.util.Log;
 
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import static org.junit.Assert.*;
@@ -19,4 +20,9 @@ public class ExampleUnitTest {
         assertEquals(4, 2 + 2);
     }
 
+    @Test
+    public void swapTest() {
+        byte[] x = new byte[2];
+        
+    }
 }

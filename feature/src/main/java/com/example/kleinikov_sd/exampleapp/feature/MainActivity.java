@@ -1,7 +1,6 @@
 package com.example.kleinikov_sd.exampleapp.feature;
 
 import android.Manifest;
-import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -35,11 +34,15 @@ public class MainActivity extends AppCompatActivity {
     public static final String TAG = "myTag";
 
     public static final String EXTRA_MESSAGE = "message";
-    public static final String ACTION_CHANGE_DEVICE = "changeDevice";
+
+    private static final String ACTION_CHANGE_DEVICE = "changeDevice";
+
     private static final String FILE_NAME = "BoundedDeviceInfo";
+
     private static final String KEY_PIN = "0000";
     private static final String KEY_ADDRESS = "address";
     private static final String KEY_NAME = "name";
+
     private static final int REQUEST_CODE_BLUETOOTH_ON = 1;
     private static final int REQUEST_CODE_DEVICE_COMMUNICATE = 2;
 
@@ -57,13 +60,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        Log.i(TAG, "On Create MainActivity");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        /*
+            Reads from the file the address of a device which was connect
+         */
         String macAddress = readDeviceInfo();
         if (!ACTION_CHANGE_DEVICE.equals(getIntent().getAction())
-                &&BluetoothAdapter.checkBluetoothAddress(macAddress) && mBluetoothAdapter.isEnabled()
+                && BluetoothAdapter.checkBluetoothAddress(macAddress) && mBluetoothAdapter.isEnabled()
                 && mBluetoothAdapter.getBondedDevices().contains(mBluetoothAdapter.getRemoteDevice(macAddress))) {
             connect(mBluetoothAdapter.getRemoteDevice(macAddress));
         }
@@ -117,7 +122,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void connect(BluetoothDevice device) {
-        Log.i(TAG, "Connect");
         mBluetoothAdapter.cancelDiscovery();
         Intent intent = new Intent(MainActivity.this, DeviceCommunicateActivity.class);
         intent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
@@ -186,6 +190,29 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    private void saveDeviceInfo() {
+        Log.i(TAG, "save device info");
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+                openFileOutput(FILE_NAME, MODE_PRIVATE)))) {
+            writer.write(mDevice.getAddress());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String readDeviceInfo() {
+        Log.i(TAG, "read device info");
+        StringBuilder address = new StringBuilder();
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    openFileInput(FILE_NAME)));
+            address.append(reader.readLine());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return address.toString();
+    }
+
     private class SingleBroadCastReceiver extends BroadcastReceiver {
 
         @Override
@@ -208,32 +235,10 @@ public class MainActivity extends AppCompatActivity {
                 switch (bluetoothDevice.getBondState()) {
                     case BluetoothDevice.BOND_BONDED:
                         connect(bluetoothDevice);
-                        Log.e(TAG, "save");
                         saveDeviceInfo();
                 }
             }
 
         }
-    }
-
-    private void saveDeviceInfo() {
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                openFileOutput(FILE_NAME, MODE_PRIVATE)))) {
-            writer.write(mDevice.getAddress());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private String readDeviceInfo() {
-        StringBuilder address = new StringBuilder();
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(
-                    openFileInput(FILE_NAME)));
-            address.append(reader.readLine());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return address.toString();
     }
 }

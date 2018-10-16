@@ -2,11 +2,14 @@ package com.example.kleinikov_sd.exampleapp.feature;
 
 import android.app.Activity;
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
@@ -26,6 +29,13 @@ import java.util.concurrent.TimeUnit;
 
 import static com.example.kleinikov_sd.exampleapp.feature.MainActivity.TAG;
 
+/**
+ * This class is the Service for communication with A device through the Bluetooth.
+ * Was designed by using the local service pattern to communicate with the activity
+ * which it bounded.
+ * Contains methods to create a {@link BluetoothSocket} and to make reconnect with
+ * a device in case the signal loss
+ */
 public class ConnectionDeviceService extends Service {
 
     public static final String ACTION_UNABLE_CONNECT = "unableToConnect";
@@ -62,7 +72,7 @@ public class ConnectionDeviceService extends Service {
             if (!openBT(mDevice)) {
                 mIntent.setAction(ACTION_CANCEL);
                 sendBroadcast(mIntent);
-            }else{
+            } else {
                 Intent connectionActiveIntent = new Intent(ACTION_CONNECTION_ACTIVE);
                 sendBroadcast(connectionActiveIntent);
             }
@@ -115,6 +125,7 @@ public class ConnectionDeviceService extends Service {
             mMessageNumber++;
             mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
         } catch (IOException e) {
+            stop();
             Log.e(TAG, "An error occurred while sending data");
             mIntent.setAction(ACTION_DISCONNECT);
             sendBroadcast(mIntent);
@@ -126,16 +137,20 @@ public class ConnectionDeviceService extends Service {
     public void restartConnection() {
         Log.e(TAG, "Restart connection " + Thread.currentThread().getId());
         new Thread(() -> {
-            stop();
             boolean isConnected = false;
             while (!isConnected) {
                 resetConnection();
                 mIntent.setAction(ACTION_RECONNECT);
                 sendBroadcast(mIntent);
                 isConnected = openBT(mDevice);
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
-            isConnected=false;
-            while (!isConnected){
+            isConnected = false;
+            while (!isConnected) {
                 resetConnection();
                 isConnected = openBT(mDevice);
             }
@@ -170,18 +185,21 @@ public class ConnectionDeviceService extends Service {
                 mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
             }
         }
-        try {
-            if (!CRC.getInstance().checkCRC(buffer)) {
-                mErrorNumber++;
-                mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
-                Log.e(TAG, "Buffer" + Arrays.toString(buffer));
-            }
-        } catch (Throwable e) {
-            Log.e(TAG, " error", e);
+
+        if (!CRC16.getInstance().checkCRC16(buffer)) {
+            mErrorNumber++;
+            mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
+            Log.e(TAG, "Buffer" + Arrays.toString(buffer));
         }
         Log.i(TAG, "Response time" + " " + (System.currentTimeMillis() - mTime) + " Answer text " + outText);
     }
 
+    /**
+     * Makes a hex string from byte which given by adding additional "0" if it has just a one digit.
+     *
+     * @param number byte to make a hex string
+     * @return completed string
+     */
     private String getHexString(Byte number) {
         String x = Integer.toHexString(number & 255);
         if (x.length() < 2) {
@@ -197,17 +215,28 @@ public class ConnectionDeviceService extends Service {
         intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mDevice);
         intent.putExtra(DeviceCommunicateActivity.KEY_MESSAGE_NUMBER, mMessageNumber);
         intent.putExtra(DeviceCommunicateActivity.KEY_ERROR_NUMBER, mErrorNumber);
-        PendingIntent resultPendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent resultPendingIntent =
+                PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        NotificationCompat.Builder builder =
-                new NotificationCompat.Builder(this, "myChanelId")
-                        .setSmallIcon(R.mipmap.ic_launcher)
-                        .setContentTitle(mDevice.getName())
-                        .setContentText("Executing...")
-                        .setOngoing(true)
-                        .setWhen(new Date().getTime())
-                        .setUsesChronometer(true)
-                        .setContentIntent(resultPendingIntent);
+        NotificationManager notificationManager = (NotificationManager) getApplicationContext()
+                .getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationCompat.Builder builder;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            NotificationChannel notificationChannel =
+                    new NotificationChannel("ID", "Notification", NotificationManager.IMPORTANCE_HIGH);
+            notificationManager.createNotificationChannel(notificationChannel);
+            builder = new NotificationCompat.Builder(getApplicationContext(), notificationChannel.getId());
+        } else {
+            builder = new NotificationCompat.Builder(getApplicationContext());
+        }
+
+        builder.setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(mDevice.getName())
+                .setContentText("Executing...")
+                .setOngoing(true)
+                .setWhen(new Date().getTime())
+                .setUsesChronometer(true)
+                .setContentIntent(resultPendingIntent);
 
         Notification notification = builder.build();
         startForeground(1, notification);

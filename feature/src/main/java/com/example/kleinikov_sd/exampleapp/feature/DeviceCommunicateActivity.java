@@ -101,12 +101,12 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
                 ConnectionDeviceService.LocalBinder binder = (ConnectionDeviceService.LocalBinder) service;
                 mService = binder.getServiceInstance(); //Get instance of your service!
                 mService.registerClient(DeviceCommunicateActivity.this); //Activity register in the service as client for callbacks!
-                Log.e(TAG, "Service connected ");
+                Log.i(TAG, "Service connected ");
             }
 
             @Override
             public void onServiceDisconnected(ComponentName arg) {
-                Log.e(TAG, "service disconnected ");
+                Log.i(TAG, "service disconnected ");
             }
         };
         IntentFilter filter = new IntentFilter(ConnectionDeviceService.ACTION_UNABLE_CONNECT);
