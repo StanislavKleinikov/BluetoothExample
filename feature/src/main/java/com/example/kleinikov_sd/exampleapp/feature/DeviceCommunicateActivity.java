@@ -1,5 +1,6 @@
 package com.example.kleinikov_sd.exampleapp.feature;
 
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -13,7 +14,6 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -42,15 +42,23 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
     private ConnectionDeviceService mService;
     private Intent serviceIntent;
     private ServiceConnection mConnection;
+    private ProgressDialog dialog;
 
     private int mMessageNumber;
     private int mErrorNumber;
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_communicate_device);
+
+        dialog = new ProgressDialog(DeviceCommunicateActivity.this);
+        dialog.setTitle("Connecting to device");
+        dialog.setMessage("Please wait..");
+        dialog.setIndeterminate(true);
+        dialog.setCancelable(false);
 
         deviceNameText = findViewById(R.id.device_name);
         responseText = findViewById(R.id.response_text);
@@ -101,7 +109,6 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
                 Log.e(TAG, "service disconnected ");
             }
         };
-
         IntentFilter filter = new IntentFilter(ConnectionDeviceService.ACTION_UNABLE_CONNECT);
         filter.addAction(ConnectionDeviceService.ACTION_CONNECTION_ACTIVE);
         filter.addAction(ConnectionDeviceService.ACTION_RECONNECT);
@@ -111,6 +118,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
         registerReceiver(mReceiver, filter);
 
         if (serviceIntent == null) {
+            dialog.show();
             serviceIntent = new Intent(this, ConnectionDeviceService.class);
             serviceIntent.putExtra(BluetoothDevice.EXTRA_DEVICE, mDevice);
             startService(serviceIntent);
@@ -132,8 +140,8 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
 
     private void cancel(String message) {
         Log.e(TAG, "cancel");
-        stopService(serviceIntent);
         setResult(RESULT_CANCELED);
+        stopService(serviceIntent);
         getIntent().putExtra(MainActivity.EXTRA_MESSAGE, message);
         finish();
     }
@@ -174,6 +182,9 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
                 responseText.setText(getString(R.string.status_connected));
                 makeToast(getString(R.string.toast_connection_active));
                 toggleButton.setClickable(true);
+                if(dialog.isShowing()){
+                    dialog.cancel();
+                }
             } else if (ConnectionDeviceService.ACTION_UNABLE_CONNECT.equals(action)) {
                 responseText.setText(getString(R.string.status_unable_connect));
                 makeToast(getString(R.string.toast_connection_failed));

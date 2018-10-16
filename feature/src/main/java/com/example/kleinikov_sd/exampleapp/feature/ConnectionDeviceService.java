@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
@@ -37,9 +38,9 @@ public class ConnectionDeviceService extends Service {
 
     private Callbacks mActivity;
     private BluetoothDevice mDevice;
-    private InputStream mInputStream;
-    private OutputStream mOutputStream;
-    private BluetoothSocket mSocket;
+    private static InputStream mInputStream;
+    private static OutputStream mOutputStream;
+    private static BluetoothSocket mSocket;
     private ScheduledExecutorService mExecutor;
     private Intent mIntent;
 
@@ -57,10 +58,15 @@ public class ConnectionDeviceService extends Service {
         Log.i(TAG, "Start service");
         mDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
         mIntent = new Intent();
-        if (!openBT(mDevice)) {
-            mIntent.setAction(ACTION_CANCEL);
-            sendBroadcast(mIntent);
-        }
+        new Thread(() -> {
+            if (!openBT(mDevice)) {
+                mIntent.setAction(ACTION_CANCEL);
+                sendBroadcast(mIntent);
+            }else{
+                Intent connectionActiveIntent = new Intent(ACTION_CONNECTION_ACTIVE);
+                sendBroadcast(connectionActiveIntent);
+            }
+        }).start();
         return START_NOT_STICKY;
     }
 
@@ -80,10 +86,10 @@ public class ConnectionDeviceService extends Service {
     }
 
     public boolean openBT(BluetoothDevice device) {
-
         try {
             ParcelUuid[] idArray = device.getUuids();
             UUID uuid = UUID.fromString(idArray[0].toString());
+            BluetoothAdapter.getDefaultAdapter().cancelDiscovery();
             mSocket = device.createRfcommSocketToServiceRecord(uuid);
         } catch (IOException e) {
             Log.e(TAG, "Socket's create() method failed", e);
@@ -92,45 +98,51 @@ public class ConnectionDeviceService extends Service {
             mSocket.connect();
             mInputStream = mSocket.getInputStream();
             mOutputStream = mSocket.getOutputStream();
-            Intent connectionActiveIntent = new Intent(ACTION_CONNECTION_ACTIVE);
-            sendBroadcast(connectionActiveIntent);
             return true;
         } catch (IOException connectException) {
             Log.w(TAG, "Unable to connect");
             mIntent.setAction(ACTION_UNABLE_CONNECT);
             sendBroadcast(mIntent);
-            mSocket = null;
             return false;
         }
     }
 
     private void sendData(byte[] message) {
-        Log.i(TAG, "Send data: " + (System.currentTimeMillis() - mTime));
+        Log.i(TAG, "Send data: " + (System.currentTimeMillis() - mTime) + Arrays.toString(message));
         try {
             mOutputStream.write(message);
             beginListenForData();
             mMessageNumber++;
             mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
         } catch (IOException e) {
-            stop();
             Log.e(TAG, "An error occurred while sending data");
             mIntent.setAction(ACTION_DISCONNECT);
             sendBroadcast(mIntent);
-            restartConnection();
             e.printStackTrace();
+            restartConnection();
         }
     }
 
-    private void restartConnection() {
-            boolean isConnected;
-            Log.e(TAG, "Start thread");
-            do {
-                Log.e(TAG, "openBT");
-                sendBroadcast(mIntent.setAction(ACTION_RECONNECT));
+    public void restartConnection() {
+        Log.e(TAG, "Restart connection " + Thread.currentThread().getId());
+        new Thread(() -> {
+            stop();
+            boolean isConnected = false;
+            while (!isConnected) {
+                resetConnection();
+                mIntent.setAction(ACTION_RECONNECT);
+                sendBroadcast(mIntent);
                 isConnected = openBT(mDevice);
-            } while (!isConnected);
-            mIntent.setAction(ACTION_CONNECTION_ACTIVE);
-            sendBroadcast(mIntent);
+            }
+            isConnected=false;
+            while (!isConnected){
+                resetConnection();
+                isConnected = openBT(mDevice);
+            }
+            Intent connectionActiveIntent = new Intent(ACTION_CONNECTION_ACTIVE);
+            sendBroadcast(connectionActiveIntent);
+            start();
+        }).start();
     }
 
     private void beginListenForData() {
@@ -203,10 +215,11 @@ public class ConnectionDeviceService extends Service {
         mTime = System.currentTimeMillis();
         Log.i(TAG, "Start time " + (System.currentTimeMillis() - mTime));
         mExecutor = Executors.newScheduledThreadPool(1);
-        mExecutor.scheduleAtFixedRate(() -> sendData(MESSAGE_07), 300, TIMEOUT, TimeUnit.MILLISECONDS);
+        mExecutor.scheduleAtFixedRate(() -> sendData(MESSAGE_07), 500, TIMEOUT, TimeUnit.MILLISECONDS);
     }
 
     public void stop() {
+        Log.e(TAG, "Stop");
         stopForeground(true);
         if (mExecutor != null) {
             mExecutor.shutdownNow();
@@ -244,10 +257,12 @@ public class ConnectionDeviceService extends Service {
 
     public interface Callbacks {
         void updateMessageNumber(int messageNumber, int errorNumber);
+
     }
 
     @Override
     public void onDestroy() {
+        stop();
         resetConnection();
         Log.i(TAG, "Destroy service");
         super.onDestroy();

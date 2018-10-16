@@ -1,11 +1,11 @@
 package com.example.kleinikov_sd.exampleapp.feature;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
@@ -13,7 +13,6 @@ import android.os.Build;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -35,12 +34,14 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "myTag";
 
-    public static final String ACTION_CHANGE_DEVICE = "changeDevice";
     public static final String EXTRA_MESSAGE = "message";
+    public static final String ACTION_CHANGE_DEVICE = "changeDevice";
     private static final String FILE_NAME = "BoundedDeviceInfo";
     private static final String KEY_PIN = "0000";
     private static final String KEY_ADDRESS = "address";
-    private static final String KEY_NAME = "came";
+    private static final String KEY_NAME = "name";
+    private static final int REQUEST_CODE_BLUETOOTH_ON = 1;
+    private static final int REQUEST_CODE_DEVICE_COMMUNICATE = 2;
 
 
     private Button switcherButton;
@@ -56,22 +57,16 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        if (!ACTION_CHANGE_DEVICE.equals(getIntent().getAction())) {
-            String macAddress = readDeviceInfo();
-            if (BluetoothAdapter.checkBluetoothAddress(macAddress)) {
-//                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-//                builder.setTitle("Connecting to device")
-//                        .setCancelable(false);
-//                AlertDialog alert = builder.create();
-//                alert.show();
-                connect(mBluetoothAdapter.getRemoteDevice(macAddress));
-
-            }
-        }
-
         Log.i(TAG, "On Create MainActivity");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        String macAddress = readDeviceInfo();
+        if (!ACTION_CHANGE_DEVICE.equals(getIntent().getAction())
+                &&BluetoothAdapter.checkBluetoothAddress(macAddress) && mBluetoothAdapter.isEnabled()
+                && mBluetoothAdapter.getBondedDevices().contains(mBluetoothAdapter.getRemoteDevice(macAddress))) {
+            connect(mBluetoothAdapter.getRemoteDevice(macAddress));
+        }
 
         switcherButton = findViewById(R.id.switch_button);
         searchButton = findViewById(R.id.find_devices);
@@ -90,7 +85,15 @@ public class MainActivity extends AppCompatActivity {
         });
 
         switcherButton.setOnClickListener(v -> switchState());
-        searchButton.setOnClickListener(v -> findDevices());
+        searchButton.setOnClickListener(v -> {
+            if (!mBluetoothAdapter.isEnabled()) {
+                Intent turnOn = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(turnOn, REQUEST_CODE_BLUETOOTH_ON);
+            } else {
+                findDevices();
+            }
+
+        });
 
         simpleAdapter = new SimpleAdapter(this, arrayList, android.R.layout.simple_list_item_2, new String[]{KEY_NAME, KEY_ADDRESS},
                 new int[]{android.R.id.text1, android.R.id.text2});
@@ -109,8 +112,7 @@ public class MainActivity extends AppCompatActivity {
             makeToast(getString(R.string.toast_turned_off));
         } else {
             Intent turnOn = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(turnOn, 0);
-            makeToast(getString(R.string.toast_turned_on));
+            startActivityForResult(turnOn, REQUEST_CODE_BLUETOOTH_ON);
         }
     }
 
@@ -119,11 +121,15 @@ public class MainActivity extends AppCompatActivity {
         mBluetoothAdapter.cancelDiscovery();
         Intent intent = new Intent(MainActivity.this, DeviceCommunicateActivity.class);
         intent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
-        startActivityForResult(intent, 0);
+        startActivityForResult(intent, REQUEST_CODE_DEVICE_COMMUNICATE);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if (REQUEST_CODE_BLUETOOTH_ON == requestCode) {
+            makeToast(getString(R.string.toast_turned_on));
+            return;
+        }
         switch (resultCode) {
             case RESULT_OK:
                 finish();
@@ -133,6 +139,7 @@ public class MainActivity extends AppCompatActivity {
                     String message = data.getStringExtra(EXTRA_MESSAGE);
                     makeToast(message);
                 }
+                getIntent().setAction(ACTION_CHANGE_DEVICE);
                 findDevices();
                 break;
         }
@@ -140,7 +147,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void makeToast(String message) {
-        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+        if (message != null) {
+            Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void findDevices() {

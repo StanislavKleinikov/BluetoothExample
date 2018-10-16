@@ -20,8 +20,8 @@
     <string name="toast_connection_failed">Connection failed</string>
     <string name="toast_reconnection">Reconnection…</string>
     <string name="toast_change_device">Please, connect to device</string>
-    <string name="toast_turned_on">Turned off</string>
-    <string name="toast_turned_off">Turned on</string>
+    <string name="toast_turned_on">Turned on</string>
+    <string name="toast_turned_off">Turned off</string>
     <dimen name="TextView">30sp</dimen>
     <dimen name="Counter">20sp</dimen>
 </resources>
