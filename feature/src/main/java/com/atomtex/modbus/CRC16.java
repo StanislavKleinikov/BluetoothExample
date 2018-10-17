@@ -1,4 +1,4 @@
-package com.example.kleinikov_sd.exampleapp.feature;
+package com.atomtex.modbus;
 
 import java.util.Arrays;
 

@@ -121,6 +121,7 @@ public class ConnectionDeviceService extends Service {
         Log.i(TAG, "Send data: " + (System.currentTimeMillis() - mTime) + Arrays.toString(message));
         try {
             mOutputStream.write(message);
+
             beginListenForData();
             mMessageNumber++;
             mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
@@ -184,9 +185,9 @@ public class ConnectionDeviceService extends Service {
                 mErrorNumber++;
                 mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
             }
-        }
+    }
 
-        if (!CRC16.getInstance().checkCRC16(buffer)) {
+        if (!CRC16.checkCRC(buffer)) {
             mErrorNumber++;
             mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
             Log.e(TAG, "Buffer" + Arrays.toString(buffer));
