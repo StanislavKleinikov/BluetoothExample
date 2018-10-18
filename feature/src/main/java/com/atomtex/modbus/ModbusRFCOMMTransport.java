@@ -5,14 +5,19 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.ParcelUuid;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.UUID;
 
-public class ModbusRFCOMMTransport implements ModbusTransport {
+/**
+ * @author stanislav.kleinikov@gmail.com
+ */
+public class ModbusRFCOMMTransport implements ModbusTransport, Closeable {
 
+    private BluetoothDevice device;
     private BluetoothSocket socket;
     private InputStream inputStream;
     private OutputStream outputStream;
@@ -24,11 +29,14 @@ public class ModbusRFCOMMTransport implements ModbusTransport {
         private static final ModbusRFCOMMTransport instance = new ModbusRFCOMMTransport();
     }
 
-    public static ModbusRFCOMMTransport getInstance() {
-        return ModbusRFCOMMTransportHolder.instance;
+    public static ModbusRFCOMMTransport getInstance(BluetoothDevice device) {
+        ModbusRFCOMMTransport instance = ModbusRFCOMMTransportHolder.instance;
+        instance.device = device;
+        return instance;
     }
 
-    public boolean connect(BluetoothDevice device) {
+    @Override
+    public boolean connect() {
         try {
             ParcelUuid[] idArray = device.getUuids();
             UUID uuid = UUID.fromString(idArray[0].toString());
@@ -89,7 +97,7 @@ public class ModbusRFCOMMTransport implements ModbusTransport {
     }
 
 
-    private void resetConnection() {
+    public void close() {
         if (inputStream != null) {
             try {
                 inputStream.close();

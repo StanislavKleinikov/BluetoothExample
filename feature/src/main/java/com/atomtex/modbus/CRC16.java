@@ -10,6 +10,8 @@ import java.util.Arrays;
  * Blocks of data get a short check value attached, based on the remainder of a polynomial division
  * of their contents. On retrieval, the calculation is repeated and, in the event the check
  * values do not match, corrective action can be taken against data corruption.
+ *
+ * @author stanislav.kleinikov@gmail.com
  */
 public class CRC16 {
 

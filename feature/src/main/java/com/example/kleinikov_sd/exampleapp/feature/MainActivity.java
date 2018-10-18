@@ -29,6 +29,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @author kleinikov.stanislav@gmail.com
+ */
 public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "myTag";

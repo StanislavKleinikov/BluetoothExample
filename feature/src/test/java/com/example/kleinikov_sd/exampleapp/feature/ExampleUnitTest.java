@@ -5,6 +5,11 @@ import android.renderscript.Byte3;
 import android.renderscript.Byte4;
 import android.util.Log;
 
+import com.atomtex.modbus.BitConverter;
+import com.atomtex.modbus.ByteSwapper;
+import com.atomtex.modbus.ByteUtil;
+import com.atomtex.modbus.CRC16;
+
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -26,22 +31,27 @@ public class ExampleUnitTest {
 
     @Test
     public void swapTest() {
+        final byte[] MESSAGE_07 = new byte[]{0x01, 0x07, (byte) 0xe2, 0x41};
 
-        byte[] x = new byte[]{0x40,0x49,0xe,0x56};
-        byte[] y  = new byte[]{0x01, 0x07, (byte) 0xe2, 0x41};
-        byte[] z  = new byte[]{0x34,0x56};
+        byte[] x = new byte[]{(byte) 0xe2, 0x41};
 
+        byte[] y = new byte[]{0x01, 0x07};
 
-        System.out.println(CRC16.checkCRC(y));
+        int res = CRC16.calcCRC(x);
+        int res2 = CRC16.calcCRC(y);
 
-        int res = CRC16.calcCRC(new byte[]{0x01,0x07});
+        int one = x[x.length - 2];
+        int two = x[x.length - 1];
+        int crcToCheck = (one & 255) * 256 + (two & 255);
 
-        System.out.println(res);
+        System.out.println(CRC16.calcCRC(y));
+        System.out.println(crcToCheck);
 
-        ByteBuffer buffer = ByteBuffer.wrap(z);
+        short num = (short) 57921;
+        num = ByteSwapper.swap(num);
+        byte[] bytes1 = BitConverter.getBytes(num);
 
-        int result = buffer.getShort();
-        System.out.println(result);
+        System.out.println(ByteUtil.getHexString(bytes1));
 
     }
 }

@@ -20,7 +20,10 @@ import android.widget.ToggleButton;
 
 import static com.example.kleinikov_sd.exampleapp.feature.MainActivity.TAG;
 
-public class DeviceCommunicateActivity extends AppCompatActivity implements ConnectionDeviceService.Callbacks {
+/**
+ * @author kleinikov.stanislav@gmail.com
+ */
+public class DeviceCommunicateActivity extends AppCompatActivity implements DeviceService.Callbacks {
 
     public static final String KEY_RESPONSE_TEXT = "responseText";
     public static final String KEY_MESSAGE_NUMBER = "messageNumber";
@@ -39,7 +42,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
     private BluetoothDevice mDevice;
     private BroadcastReceiver mReceiver;
 
-    private ConnectionDeviceService mService;
+    private DeviceService mService;
     private Intent serviceIntent;
     private ServiceConnection mConnection;
     private ProgressDialog dialog;
@@ -98,7 +101,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
             @Override
             public void onServiceConnected(ComponentName className,
                                            IBinder service) {
-                ConnectionDeviceService.LocalBinder binder = (ConnectionDeviceService.LocalBinder) service;
+                DeviceService.LocalBinder binder = (DeviceService.LocalBinder) service;
                 mService = binder.getServiceInstance(); //Get instance of your service!
                 mService.registerClient(DeviceCommunicateActivity.this); //Activity register in the service as client for callbacks!
                 Log.i(TAG, "Service connected ");
@@ -109,17 +112,17 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
                 Log.i(TAG, "service disconnected ");
             }
         };
-        IntentFilter filter = new IntentFilter(ConnectionDeviceService.ACTION_UNABLE_CONNECT);
-        filter.addAction(ConnectionDeviceService.ACTION_CONNECTION_ACTIVE);
-        filter.addAction(ConnectionDeviceService.ACTION_RECONNECT);
-        filter.addAction(ConnectionDeviceService.ACTION_DISCONNECT);
-        filter.addAction(ConnectionDeviceService.ACTION_CANCEL);
+        IntentFilter filter = new IntentFilter(DeviceService.ACTION_UNABLE_CONNECT);
+        filter.addAction(DeviceService.ACTION_CONNECTION_ACTIVE);
+        filter.addAction(DeviceService.ACTION_RECONNECT);
+        filter.addAction(DeviceService.ACTION_DISCONNECT);
+        filter.addAction(DeviceService.ACTION_CANCEL);
         mReceiver = new ConnectionBroadCastReceiver();
         registerReceiver(mReceiver, filter);
 
         if (serviceIntent == null) {
             dialog.show();
-            serviceIntent = new Intent(this, ConnectionDeviceService.class);
+            serviceIntent = new Intent(this, DeviceService.class);
             serviceIntent.putExtra(BluetoothDevice.EXTRA_DEVICE, mDevice);
             startService(serviceIntent);
         }
@@ -178,26 +181,26 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Conn
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            if (ConnectionDeviceService.ACTION_CONNECTION_ACTIVE.equals(action)) {
+            if (DeviceService.ACTION_CONNECTION_ACTIVE.equals(action)) {
                 responseText.setText(getString(R.string.status_connected));
                 makeToast(getString(R.string.toast_connection_active));
                 toggleButton.setClickable(true);
-                if(dialog.isShowing()){
+                if (dialog.isShowing()) {
                     dialog.cancel();
                 }
-            } else if (ConnectionDeviceService.ACTION_UNABLE_CONNECT.equals(action)) {
+            } else if (DeviceService.ACTION_UNABLE_CONNECT.equals(action)) {
                 responseText.setText(getString(R.string.status_unable_connect));
                 makeToast(getString(R.string.toast_connection_failed));
                 toggleButton.setClickable(false);
-            } else if (ConnectionDeviceService.ACTION_RECONNECT.equals(action)) {
+            } else if (DeviceService.ACTION_RECONNECT.equals(action)) {
                 responseText.setText(getString(R.string.status_reconnect));
                 makeToast(getString(R.string.toast_reconnection));
                 toggleButton.setClickable(false);
-            } else if (ConnectionDeviceService.ACTION_DISCONNECT.equals(action)) {
+            } else if (DeviceService.ACTION_DISCONNECT.equals(action)) {
                 responseText.setText(getString(R.string.status_disconnect));
                 makeToast(getString(R.string.toast_connection_failed));
                 toggleButton.setClickable(false);
-            } else if (ConnectionDeviceService.ACTION_CANCEL.equals(action)) {
+            } else if (DeviceService.ACTION_CANCEL.equals(action)) {
                 cancel(getString(R.string.status_unable_connect));
             }
         }
