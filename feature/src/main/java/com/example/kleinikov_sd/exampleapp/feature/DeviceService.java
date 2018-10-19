@@ -15,17 +15,21 @@ import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-import com.atomtex.modbus.ByteUtil;
-import com.atomtex.modbus.Modbus;
-import com.atomtex.modbus.ModbusMessage;
-import com.atomtex.modbus.ModbusSlave;
-import com.atomtex.modbus.ModbusTransportFactory;
+import com.atomtex.modbus.command.Command;
+import com.atomtex.modbus.util.BTD3Constant;
+import com.atomtex.modbus.util.ByteUtil;
+import com.atomtex.modbus.domain.Modbus;
+import com.atomtex.modbus.domain.ModbusMessage;
+import com.atomtex.modbus.domain.ModbusSlave;
+import com.atomtex.modbus.transport.ModbusTransportFactory;
 
 import java.util.Arrays;
 import java.util.Date;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static com.atomtex.modbus.util.BTD3Constant.*;
 
 import static com.example.kleinikov_sd.exampleapp.feature.MainActivity.TAG;
 
@@ -45,13 +49,14 @@ public class DeviceService extends Service {
     public static final String ACTION_RECONNECT = "actionReconnect";
     public static final String ACTION_DISCONNECT = "actionDisconnect";
     public static final String ACTION_CANCEL = "actionCancel";
-    private static final int TIMEOUT = 100;
+    // private static final int TIMEOUT = 100;
 
     private DeviceService.Callbacks mActivity;
     private BluetoothDevice mDevice;
     private ScheduledExecutorService mExecutor;
     private Intent mIntent;
     private Modbus modbus;
+    private Command command;
 
     private int mMessageNumber;
     private int mErrorNumber;
@@ -200,18 +205,31 @@ public class DeviceService extends Service {
 
         mTime = System.currentTimeMillis();
         Log.i(TAG, "Start time " + (System.currentTimeMillis() - mTime));
-        mExecutor = Executors.newScheduledThreadPool(1);
-        ModbusMessage message = new ModbusMessage(ModbusMessage.MESSAGE_07);
-        mExecutor.scheduleAtFixedRate(() -> sendData(message), 500, TIMEOUT, TimeUnit.MILLISECONDS);
+
+        byte[] commandData = new byte[]{ADDRESS, READ_SW};
+        command = modbus.getCommand(READ_SW);
+        command.execute(modbus, commandData, this);
+
+//        mExecutor = Executors.newScheduledThreadPool(1);
+//        ModbusMessage message = new ModbusMessage(ModbusMessage.MESSAGE_07);
+//        mExecutor.scheduleAtFixedRate(() -> sendData(message), 500, TIMEOUT, TimeUnit.MILLISECONDS);
     }
 
     public void stop() {
         Log.e(TAG, "Stop");
         stopForeground(true);
-        if (mExecutor != null) {
-            mExecutor.shutdownNow();
-            mExecutor = null;
+        if (command != null) {
+            command.stop();
+            command = null;
         }
+//        if (mExecutor != null) {
+//            mExecutor.shutdownNow();
+//            mExecutor = null;
+//        }
+    }
+
+    public Callbacks getBoundedActivity() {
+        return mActivity;
     }
 
     public interface Callbacks {

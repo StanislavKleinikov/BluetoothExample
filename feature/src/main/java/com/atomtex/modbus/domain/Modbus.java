@@ -1,4 +1,8 @@
-package com.atomtex.modbus;
+package com.atomtex.modbus.domain;
+
+import com.atomtex.modbus.command.Command;
+import com.atomtex.modbus.domain.ModbusMessage;
+import com.atomtex.modbus.transport.ModbusTransport;
 
 /**
  * @author stanislav.kleinikov@gmail.com
@@ -22,6 +26,8 @@ public abstract class Modbus {
     public abstract boolean connect();
 
     public abstract boolean sendMessage(ModbusMessage message);
+
+    public abstract Command getCommand(Byte commandId);
 
     public abstract ModbusMessage receiveMessage();
 

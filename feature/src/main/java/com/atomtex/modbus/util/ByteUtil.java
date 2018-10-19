@@ -1,4 +1,7 @@
-package com.atomtex.modbus;
+package com.atomtex.modbus.util;
+
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  * Utility class for doing various operation with bytes.
@@ -28,5 +31,13 @@ public class ByteUtil {
         }
         builder.trimToSize();
         return builder.toString();
+    }
+
+    public static byte[] getMessageWithCRC16(byte[] bytes) {
+        short crc = (short) CRC16.calcCRC(bytes);
+        crc = ByteSwapper.swap(crc);
+        byte[] bytesCRC = BitConverter.getBytes(crc);
+
+        return ByteBuffer.wrap(bytes).put(bytesCRC).array();
     }
 }

@@ -49,7 +49,6 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_BLUETOOTH_ON = 1;
     private static final int REQUEST_CODE_DEVICE_COMMUNICATE = 2;
 
-
     private Button switcherButton;
     private Button searchButton;
     private static final BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();

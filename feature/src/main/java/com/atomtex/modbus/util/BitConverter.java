@@ -1,4 +1,4 @@
-package com.atomtex.modbus;
+package com.atomtex.modbus.util;
 
 import java.io.UnsupportedEncodingException;
 import java.util.UUID;

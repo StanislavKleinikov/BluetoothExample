@@ -1,20 +1,11 @@
 package com.example.kleinikov_sd.exampleapp.feature;
 
-import android.renderscript.Byte2;
-import android.renderscript.Byte3;
-import android.renderscript.Byte4;
-import android.util.Log;
-
-import com.atomtex.modbus.BitConverter;
-import com.atomtex.modbus.ByteSwapper;
-import com.atomtex.modbus.ByteUtil;
-import com.atomtex.modbus.CRC16;
+import com.atomtex.modbus.util.BitConverter;
+import com.atomtex.modbus.util.ByteSwapper;
+import com.atomtex.modbus.util.ByteUtil;
+import com.atomtex.modbus.util.CRC16;
 
 import org.junit.Test;
-
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.zip.CRC32;
 
 import static org.junit.Assert.*;
 

@@ -1,4 +1,4 @@
-package com.atomtex.modbus;
+package com.atomtex.modbus.domain;
 
 /**
  * @author stanislav.kleinikov@gmail.com

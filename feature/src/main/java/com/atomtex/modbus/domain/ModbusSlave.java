@@ -1,4 +1,9 @@
-package com.atomtex.modbus;
+package com.atomtex.modbus.domain;
+
+import com.atomtex.modbus.command.Command;
+import com.atomtex.modbus.command.CommandChooser;
+import com.atomtex.modbus.transport.ModbusTransport;
+import com.atomtex.modbus.util.CRC16;
 
 /**
  * @author stanislav.kleinikov@gmail.com
@@ -27,6 +32,11 @@ public class ModbusSlave extends Modbus {
     }
 
     @Override
+    public Command getCommand(Byte commandId) {
+        return CommandChooser.getCommand(commandId);
+    }
+
+    @Override
     public ModbusMessage receiveMessage() {
         ModbusMessage message = new ModbusMessage(getTransport().receiveMessage());
         message.setIntegrity(CRC16.checkCRC(message.getBuffer()));
@@ -38,4 +48,6 @@ public class ModbusSlave extends Modbus {
         getTransport().close();
 
     }
+
+
 }
