@@ -1,4 +1,4 @@
-package com.example.kleinikov_sd.exampleapp.feature;
+package com.atomtex.feature.activity;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
@@ -19,6 +19,8 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
+
+import com.example.kleinikov_sd.exampleapp.feature.R;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

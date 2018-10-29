@@ -1,9 +1,6 @@
-package com.atomtex.modbus.transport;
+package com.atomtex.feature.transport;
 
 import android.bluetooth.BluetoothDevice;
-
-import com.atomtex.modbus.transport.ModbusRFCOMMTransport;
-import com.atomtex.modbus.transport.ModbusTransport;
 
 /**
  * @author stanislav.kleinikov@gmail.com

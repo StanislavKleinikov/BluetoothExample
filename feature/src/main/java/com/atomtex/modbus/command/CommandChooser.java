@@ -1,8 +1,8 @@
-package com.atomtex.modbus.command;
+package com.atomtex.feature.command;
 
 import android.util.SparseArray;
 
-import static com.atomtex.modbus.util.BTD3Constant.*;
+import static com.atomtex.feature.util.BTD3Constant.*;
 
 public class CommandChooser {
 

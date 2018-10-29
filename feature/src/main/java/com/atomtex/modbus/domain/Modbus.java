@@ -1,8 +1,7 @@
-package com.atomtex.modbus.domain;
+package com.atomtex.feature.domain;
 
-import com.atomtex.modbus.command.Command;
-import com.atomtex.modbus.domain.ModbusMessage;
-import com.atomtex.modbus.transport.ModbusTransport;
+import com.atomtex.feature.command.Command;
+import com.atomtex.feature.transport.ModbusTransport;
 
 /**
  * @author stanislav.kleinikov@gmail.com

@@ -1,4 +1,4 @@
-package com.example.kleinikov_sd.exampleapp.feature;
+package com.atomtex.feature.activity;
 
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothDevice;
@@ -18,7 +18,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
-import static com.example.kleinikov_sd.exampleapp.feature.MainActivity.TAG;
+import com.atomtex.feature.service.DeviceService;
+import com.example.kleinikov_sd.exampleapp.feature.R;
+
+import butterknife.BindView;
+
+import static com.atomtex.feature.activity.MainActivity.TAG;
 
 /**
  * @author kleinikov.stanislav@gmail.com
@@ -33,6 +38,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
     public static final String KEY_DEVICE = "device";
     public static final String KEY_TOGGLE_CLICKABLE = "clickable";
 
+    @BindView(R.id.device_name)
     private TextView deviceNameText;
     private TextView responseText;
     private TextView messageNumberView;
@@ -55,7 +61,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
     protected void onCreate(@Nullable Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_communicate_device);
+        //setContentView(R.layout.activity_communicate_device);
 
         dialog = new ProgressDialog(DeviceCommunicateActivity.this);
         dialog.setTitle("Connecting to device");
@@ -63,7 +69,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
         dialog.setIndeterminate(true);
         dialog.setCancelable(false);
 
-        deviceNameText = findViewById(R.id.device_name);
+       // deviceNameText = findViewById(R.id.device_name);
         responseText = findViewById(R.id.response_text);
         messageNumberView = findViewById(R.id.message_number);
         errorNumberView = findViewById(R.id.error_number);
@@ -71,7 +77,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
         changeDeviceButton.setOnClickListener(v -> {
             cancel(getString(R.string.toast_change_device));
         });
-        toggleButton = findViewById(R.id.toggle_button);
+        //toggleButton = findViewById(R.id.toggle_button);
         toggleButton.setOnClickListener((v) -> {
             if (toggleButton.isChecked()) {
                 mService.start();

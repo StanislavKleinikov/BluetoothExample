@@ -1,4 +1,4 @@
-package com.example.kleinikov_sd.exampleapp.feature;
+package com.atomtex.feature.service;
 
 import android.app.Activity;
 import android.app.Notification;
@@ -15,23 +15,21 @@ import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-import com.atomtex.modbus.command.Command;
-import com.atomtex.modbus.util.BTD3Constant;
-import com.atomtex.modbus.util.ByteUtil;
-import com.atomtex.modbus.domain.Modbus;
-import com.atomtex.modbus.domain.ModbusMessage;
-import com.atomtex.modbus.domain.ModbusSlave;
-import com.atomtex.modbus.transport.ModbusTransportFactory;
+import com.atomtex.feature.activity.DeviceCommunicateActivity;
+import com.atomtex.feature.command.Command;
+import com.atomtex.feature.util.ByteUtil;
+import com.atomtex.feature.domain.Modbus;
+import com.atomtex.feature.domain.ModbusMessage;
+import com.atomtex.feature.domain.ModbusSlave;
+import com.atomtex.feature.transport.ModbusTransportFactory;
 
 import java.util.Arrays;
 import java.util.Date;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
-import static com.atomtex.modbus.util.BTD3Constant.*;
+import static com.atomtex.feature.util.BTD3Constant.*;
 
-import static com.example.kleinikov_sd.exampleapp.feature.MainActivity.TAG;
+import static com.atomtex.feature.activity.MainActivity.TAG;
 
 /**
  * This class is the Service for communication with A device through the Bluetooth.
@@ -91,8 +89,8 @@ public class DeviceService extends Service {
         return new DeviceService.LocalBinder();
     }
 
-    class LocalBinder extends Binder {
-        DeviceService getServiceInstance() {
+    public class LocalBinder extends Binder {
+        public DeviceService getServiceInstance() {
             return DeviceService.this;
         }
     }
@@ -170,6 +168,7 @@ public class DeviceService extends Service {
                 + " Answer text " + ByteUtil.getHexString(message.getBuffer()));
     }
 
+    @SuppressWarnings("deprecation")
     public void start() {
         Log.e(TAG, "Start");
         Intent intent = new Intent(getApplicationContext(), DeviceCommunicateActivity.class);
@@ -192,7 +191,7 @@ public class DeviceService extends Service {
             builder = new NotificationCompat.Builder(getApplicationContext());
         }
 
-        builder.setSmallIcon(R.mipmap.ic_launcher)
+        builder.setSmallIcon(com.example.kleinikov_sd.exampleapp.R.drawable.ic_launcher_background)
                 .setContentTitle(mDevice.getName())
                 .setContentText("Executing...")
                 .setOngoing(true)

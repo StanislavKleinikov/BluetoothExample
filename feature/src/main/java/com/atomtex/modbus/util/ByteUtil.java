@@ -1,7 +1,6 @@
-package com.atomtex.modbus.util;
+package com.atomtex.feature.util;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 /**
  * Utility class for doing various operation with bytes.

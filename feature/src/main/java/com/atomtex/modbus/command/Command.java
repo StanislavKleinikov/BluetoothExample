@@ -1,8 +1,8 @@
-package com.atomtex.modbus.command;
+package com.atomtex.feature.command;
 
 import android.app.Service;
 
-import com.atomtex.modbus.domain.Modbus;
+import com.atomtex.feature.domain.Modbus;
 
 public interface Command {
 

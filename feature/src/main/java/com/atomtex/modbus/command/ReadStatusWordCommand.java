@@ -1,15 +1,10 @@
-package com.atomtex.modbus.command;
+package com.atomtex.feature.command;
 
 import android.app.Service;
 
-import com.atomtex.modbus.domain.Modbus;
-import com.atomtex.modbus.domain.ModbusMessage;
-import com.atomtex.modbus.util.ByteUtil;
-import com.example.kleinikov_sd.exampleapp.feature.DeviceService;
+import com.atomtex.feature.domain.Modbus;
 
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class ReadStatusWordCommand implements Command {
 
