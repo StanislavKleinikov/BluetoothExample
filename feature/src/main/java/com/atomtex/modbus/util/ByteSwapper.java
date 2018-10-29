@@ -1,4 +1,4 @@
-package com.atomtex.feature.util;
+package com.atomtex.modbus.util;
 
 /**
  * Utility class for doing byte swapping (i.e. conversion between

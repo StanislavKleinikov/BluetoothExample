@@ -1,4 +1,4 @@
-package com.atomtex.feature.transport;
+package com.atomtex.modbus.transport;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;

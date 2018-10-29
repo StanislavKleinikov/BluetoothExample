@@ -1,9 +1,9 @@
-package com.atomtex.feature.domain;
+package com.atomtex.modbus.domain;
 
-import com.atomtex.feature.command.Command;
-import com.atomtex.feature.command.CommandChooser;
-import com.atomtex.feature.transport.ModbusTransport;
-import com.atomtex.feature.util.CRC16;
+import com.atomtex.modbus.command.Command;
+import com.atomtex.modbus.command.CommandChooser;
+import com.atomtex.modbus.transport.ModbusTransport;
+import com.atomtex.modbus.util.CRC16;
 
 /**
  * @author stanislav.kleinikov@gmail.com

@@ -11,7 +11,7 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="default_notification_channel_id" />
 
-        <activity android:name=".MainActivity">
+        <activity android:name="com.atomtex.modbus.activity.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -19,10 +19,10 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".DeviceCommunicateActivity"
+            android:name="com.atomtex.modbus.activity.DeviceCommunicateActivity"
             android:launchMode="singleTask" />
 
-        <service android:name=".DeviceService" />
+        <service android:name="com.atomtex.modbus.service.DeviceService" />
     </application>
 
 </manifest>

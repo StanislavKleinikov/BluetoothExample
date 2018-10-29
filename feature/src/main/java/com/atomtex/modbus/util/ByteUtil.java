@@ -1,4 +1,4 @@
-package com.atomtex.feature.util;
+package com.atomtex.modbus.util;
 
 import java.nio.ByteBuffer;
 
@@ -36,7 +36,9 @@ public class ByteUtil {
         short crc = (short) CRC16.calcCRC(bytes);
         crc = ByteSwapper.swap(crc);
         byte[] bytesCRC = BitConverter.getBytes(crc);
-
-        return ByteBuffer.wrap(bytes).put(bytesCRC).array();
+        ByteBuffer buffer = ByteBuffer.allocate(bytes.length + bytesCRC.length);
+        buffer.put(bytes);
+        buffer.put(bytesCRC);
+        return buffer.array();
     }
 }

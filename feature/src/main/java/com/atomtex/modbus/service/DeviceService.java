@@ -1,11 +1,9 @@
-package com.atomtex.feature.service;
+package com.atomtex.modbus.service;
 
-import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
@@ -15,21 +13,18 @@ import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-import com.atomtex.feature.activity.DeviceCommunicateActivity;
-import com.atomtex.feature.command.Command;
-import com.atomtex.feature.util.ByteUtil;
-import com.atomtex.feature.domain.Modbus;
-import com.atomtex.feature.domain.ModbusMessage;
-import com.atomtex.feature.domain.ModbusSlave;
-import com.atomtex.feature.transport.ModbusTransportFactory;
+import com.atomtex.modbus.activity.Callback;
+import com.atomtex.modbus.activity.DeviceCommunicateActivity;
+import com.atomtex.modbus.command.Command;
+import com.atomtex.modbus.domain.Modbus;
+import com.atomtex.modbus.domain.ModbusSlave;
+import com.atomtex.modbus.transport.ModbusTransportFactory;
 
-import java.util.Arrays;
 import java.util.Date;
-import java.util.concurrent.ScheduledExecutorService;
 
-import static com.atomtex.feature.util.BTD3Constant.*;
+import static com.atomtex.modbus.util.BTD3Constant.*;
 
-import static com.atomtex.feature.activity.MainActivity.TAG;
+import static com.atomtex.modbus.activity.MainActivity.TAG;
 
 /**
  * This class is the Service for communication with A device through the Bluetooth.
@@ -40,25 +35,19 @@ import static com.atomtex.feature.activity.MainActivity.TAG;
  *
  * @author kleinikov.stanislav@gmail.com
  */
-public class DeviceService extends Service {
+public class DeviceService extends LocalService {
 
     public static final String ACTION_UNABLE_CONNECT = "unableToConnect";
     public static final String ACTION_CONNECTION_ACTIVE = "connectionIsActive";
     public static final String ACTION_RECONNECT = "actionReconnect";
     public static final String ACTION_DISCONNECT = "actionDisconnect";
     public static final String ACTION_CANCEL = "actionCancel";
-    // private static final int TIMEOUT = 100;
 
-    private DeviceService.Callbacks mActivity;
+    private Callback mActivity;
     private BluetoothDevice mDevice;
-    private ScheduledExecutorService mExecutor;
     private Intent mIntent;
     private Modbus modbus;
     private Command command;
-
-    private int mMessageNumber;
-    private int mErrorNumber;
-    private long mTime;
 
     @Override
     public void onCreate() {
@@ -95,8 +84,9 @@ public class DeviceService extends Service {
         }
     }
 
-    public void registerClient(Activity activity) {
-        this.mActivity = (DeviceService.Callbacks) activity;
+    @Override
+    public void registerClient(Callback activity) {
+        this.mActivity = activity;
     }
 
     public boolean connect() {
@@ -109,22 +99,6 @@ public class DeviceService extends Service {
             return false;
         }
     }
-
-    private void sendData(ModbusMessage message) {
-        Log.i(TAG, "Send data: " + (System.currentTimeMillis() - mTime) + Arrays.toString(message.getBuffer()));
-
-        if (!modbus.sendMessage(message)) {
-            stop();
-            Log.e(TAG, "An error occurred while sending data");
-            mIntent.setAction(ACTION_DISCONNECT);
-            sendBroadcast(mIntent);
-            restartConnection();
-        }
-        beginListenForData();
-        mMessageNumber++;
-        mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
-    }
-
 
     public void restartConnection() {
         Log.e(TAG, "Restart connection " + Thread.currentThread().getId());
@@ -152,21 +126,6 @@ public class DeviceService extends Service {
         }).start();
     }
 
-    private void beginListenForData() {
-        Log.i(TAG, "Start listening " + (System.currentTimeMillis() - mTime));
-        ModbusMessage message = modbus.receiveMessage();
-        if (message.getBuffer() == null) {
-            Log.e(TAG, "Unable to read");
-            mErrorNumber++;
-            mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
-        } else if (!message.isIntegrity()) {
-            Log.e(TAG, "Buffer" + Arrays.toString(message.getBuffer()));
-            mErrorNumber++;
-            mActivity.updateMessageNumber(mMessageNumber, mErrorNumber);
-        }
-        Log.i(TAG, "Response time" + " " + (System.currentTimeMillis() - mTime)
-                + " Answer text " + ByteUtil.getHexString(message.getBuffer()));
-    }
 
     @SuppressWarnings("deprecation")
     public void start() {
@@ -174,8 +133,6 @@ public class DeviceService extends Service {
         Intent intent = new Intent(getApplicationContext(), DeviceCommunicateActivity.class);
         intent.putExtra(DeviceCommunicateActivity.KEY_ACTIVATED, true);
         intent.putExtra(BluetoothDevice.EXTRA_DEVICE, mDevice);
-        intent.putExtra(DeviceCommunicateActivity.KEY_MESSAGE_NUMBER, mMessageNumber);
-        intent.putExtra(DeviceCommunicateActivity.KEY_ERROR_NUMBER, mErrorNumber);
         PendingIntent resultPendingIntent =
                 PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
@@ -202,39 +159,23 @@ public class DeviceService extends Service {
         Notification notification = builder.build();
         startForeground(1, notification);
 
-        mTime = System.currentTimeMillis();
-        Log.i(TAG, "Start time " + (System.currentTimeMillis() - mTime));
-
         byte[] commandData = new byte[]{ADDRESS, READ_SW};
         command = modbus.getCommand(READ_SW);
         command.execute(modbus, commandData, this);
-
-//        mExecutor = Executors.newScheduledThreadPool(1);
-//        ModbusMessage message = new ModbusMessage(ModbusMessage.MESSAGE_07);
-//        mExecutor.scheduleAtFixedRate(() -> sendData(message), 500, TIMEOUT, TimeUnit.MILLISECONDS);
     }
 
     public void stop() {
-        Log.e(TAG, "Stop");
         stopForeground(true);
         if (command != null) {
             command.stop();
-            command = null;
         }
-//        if (mExecutor != null) {
-//            mExecutor.shutdownNow();
-//            mExecutor = null;
-//        }
+        Log.e(TAG, "Stop");
     }
 
-    public Callbacks getBoundedActivity() {
+    public Callback getBoundedActivity() {
         return mActivity;
     }
 
-    public interface Callbacks {
-        void updateMessageNumber(int messageNumber, int errorNumber);
-
-    }
 
     @Override
     public void onDestroy() {

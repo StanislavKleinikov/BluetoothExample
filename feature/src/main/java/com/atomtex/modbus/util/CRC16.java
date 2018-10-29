@@ -1,4 +1,4 @@
-package com.atomtex.feature.util;
+package com.atomtex.modbus.util;
 
 import java.util.Arrays;
 

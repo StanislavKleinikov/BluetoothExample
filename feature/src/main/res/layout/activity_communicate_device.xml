@@ -32,7 +32,7 @@
         android:textSize="@dimen/TextView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/device_name"
+        app:layout_constraintTop_toBottomOf="@id/device_name"
         tools:text="@string/response" />
 
     <TextView
@@ -45,7 +45,7 @@
         android:textColor="@android:color/black"
         android:textSize="@dimen/Counter"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/response_text" />
+        app:layout_constraintTop_toBottomOf="@id/response_text" />
 
     <TextView
         android:id="@+id/textView3"
@@ -57,7 +57,7 @@
         android:textColor="@android:color/black"
         android:textSize="@dimen/Counter"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
+        app:layout_constraintTop_toBottomOf="@id/textView" />
 
     <TextView
         android:id="@+id/message_number"
@@ -67,8 +67,8 @@
         android:text="@string/start_message_number"
         android:textColor="@android:color/black"
         android:textSize="@dimen/Counter"
-        app:layout_constraintStart_toEndOf="@+id/textView"
-        app:layout_constraintTop_toTopOf="@+id/textView" />
+        app:layout_constraintStart_toEndOf="@id/textView"
+        app:layout_constraintTop_toTopOf="@id/textView" />
 
     <TextView
         android:id="@+id/error_number"
@@ -79,8 +79,8 @@
         android:text="@string/start_message_number"
         android:textColor="@android:color/black"
         android:textSize="@dimen/Counter"
-        app:layout_constraintStart_toEndOf="@+id/textView"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
+        app:layout_constraintStart_toEndOf="@id/textView"
+        app:layout_constraintTop_toBottomOf="@id/textView" />
 
     <ToggleButton
         android:id="@+id/toggle_button"
@@ -92,10 +92,10 @@
         android:layout_marginBottom="8dp"
         android:textOff="@string/toggle_off"
         android:textOn="@string/toggle_on"
-        app:layout_constraintBottom_toBottomOf="@+id/error_number"
+        app:layout_constraintBottom_toBottomOf="@id/error_number"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/message_number"
-        app:layout_constraintTop_toTopOf="@+id/message_number" />
+        app:layout_constraintStart_toEndOf="@id/message_number"
+        app:layout_constraintTop_toTopOf="@id/message_number" />
 
     <Button
         android:id="@+id/change_device"
@@ -109,6 +109,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/error_number" />
+        app:layout_constraintTop_toBottomOf="@id/error_number" />
 
 </android.support.constraint.ConstraintLayout>

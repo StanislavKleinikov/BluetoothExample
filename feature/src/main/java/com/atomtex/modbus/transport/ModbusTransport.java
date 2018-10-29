@@ -1,4 +1,4 @@
-package com.atomtex.feature.transport;
+package com.atomtex.modbus.transport;
 
 /**
  * @author stanislav.kleinikov@gmail.com

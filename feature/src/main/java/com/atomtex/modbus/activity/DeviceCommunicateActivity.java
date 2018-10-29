@@ -1,4 +1,4 @@
-package com.atomtex.feature.activity;
+package com.atomtex.modbus.activity;
 
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothDevice;
@@ -18,17 +18,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
-import com.atomtex.feature.service.DeviceService;
+import com.atomtex.modbus.service.DeviceService;
+import com.atomtex.modbus.service.LocalService;
 import com.example.kleinikov_sd.exampleapp.feature.R;
 
-import butterknife.BindView;
-
-import static com.atomtex.feature.activity.MainActivity.TAG;
+import static com.atomtex.modbus.activity.MainActivity.TAG;
 
 /**
  * @author kleinikov.stanislav@gmail.com
  */
-public class DeviceCommunicateActivity extends AppCompatActivity implements DeviceService.Callbacks {
+public class DeviceCommunicateActivity extends AppCompatActivity implements Callback, ServiceConnection {
 
     public static final String KEY_RESPONSE_TEXT = "responseText";
     public static final String KEY_MESSAGE_NUMBER = "messageNumber";
@@ -38,8 +37,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
     public static final String KEY_DEVICE = "device";
     public static final String KEY_TOGGLE_CLICKABLE = "clickable";
 
-    @BindView(R.id.device_name)
-    private TextView deviceNameText;
+    public TextView deviceNameText;
     private TextView responseText;
     private TextView messageNumberView;
     private TextView errorNumberView;
@@ -48,7 +46,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
     private BluetoothDevice mDevice;
     private BroadcastReceiver mReceiver;
 
-    private DeviceService mService;
+    private LocalService mService;
     private Intent serviceIntent;
     private ServiceConnection mConnection;
     private ProgressDialog dialog;
@@ -61,7 +59,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
     protected void onCreate(@Nullable Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
-        //setContentView(R.layout.activity_communicate_device);
+        setContentView(R.layout.activity_communicate_device);
 
         dialog = new ProgressDialog(DeviceCommunicateActivity.this);
         dialog.setTitle("Connecting to device");
@@ -69,7 +67,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
         dialog.setIndeterminate(true);
         dialog.setCancelable(false);
 
-       // deviceNameText = findViewById(R.id.device_name);
+        deviceNameText = findViewById(R.id.device_name);
         responseText = findViewById(R.id.response_text);
         messageNumberView = findViewById(R.id.message_number);
         errorNumberView = findViewById(R.id.error_number);
@@ -77,7 +75,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
         changeDeviceButton.setOnClickListener(v -> {
             cancel(getString(R.string.toast_change_device));
         });
-        //toggleButton = findViewById(R.id.toggle_button);
+        toggleButton = findViewById(R.id.toggle_button);
         toggleButton.setOnClickListener((v) -> {
             if (toggleButton.isChecked()) {
                 mService.start();
@@ -103,21 +101,7 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
         messageNumberView.setText(String.valueOf(mMessageNumber));
         errorNumberView.setText(String.valueOf(mErrorNumber));
         deviceNameText.setText(mDevice.getName());
-        mConnection = new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName className,
-                                           IBinder service) {
-                DeviceService.LocalBinder binder = (DeviceService.LocalBinder) service;
-                mService = binder.getServiceInstance(); //Get instance of your service!
-                mService.registerClient(DeviceCommunicateActivity.this); //Activity register in the service as client for callbacks!
-                Log.i(TAG, "Service connected ");
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName arg) {
-                Log.i(TAG, "service disconnected ");
-            }
-        };
+        mConnection = this;
         IntentFilter filter = new IntentFilter(DeviceService.ACTION_UNABLE_CONNECT);
         filter.addAction(DeviceService.ACTION_CONNECTION_ACTIVE);
         filter.addAction(DeviceService.ACTION_RECONNECT);
@@ -167,12 +151,12 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
     }
 
     @Override
-    public void updateMessageNumber(int messageNumber, int errorNumber) {
+    public void updateUI(Bundle bundle) {
         runOnUiThread(() -> {
-            mMessageNumber = messageNumber;
-            mErrorNumber = errorNumber;
-            messageNumberView.setText(String.valueOf(messageNumber));
-            errorNumberView.setText(String.valueOf(errorNumber));
+            mMessageNumber = bundle.getInt(KEY_MESSAGE_NUMBER);
+            mErrorNumber = bundle.getInt(KEY_ERROR_NUMBER);
+            messageNumberView.setText(String.valueOf(mMessageNumber));
+            errorNumberView.setText(String.valueOf(mErrorNumber));
         });
     }
 
@@ -181,6 +165,19 @@ public class DeviceCommunicateActivity extends AppCompatActivity implements Devi
         unbindService(mConnection);
         unregisterReceiver(mReceiver);
         super.onDestroy();
+    }
+
+    @Override
+    public void onServiceConnected(ComponentName name, IBinder service) {
+        DeviceService.LocalBinder binder = (DeviceService.LocalBinder) service;
+        mService = binder.getServiceInstance(); //Get instance of your service!
+        mService.registerClient(DeviceCommunicateActivity.this); //Activity register in the service as client for callbacks!
+        Log.i(TAG, "Service connected ");
+    }
+
+    @Override
+    public void onServiceDisconnected(ComponentName name) {
+        Log.i(TAG, "service disconnected ");
     }
 
     private class ConnectionBroadCastReceiver extends BroadcastReceiver {
